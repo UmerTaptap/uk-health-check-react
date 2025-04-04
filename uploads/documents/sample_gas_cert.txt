@@ -1,0 +1,9 @@
+This is a sample gas safety certificate document for testing purposes.
+
+Property: 42 Maple Street
+Inspection Date: 2023-03-15
+Valid Until: 2024-03-15
+Inspector: John Smith
+License: GAS-12345-UK
+
+All appliances have been checked and are operating safely.

@@ -1,0 +1,265 @@
+import { motion } from 'framer-motion';
+import { Link } from 'wouter';
+import { Property, PropertyStatus, RiskLevel } from '@/lib/types';
+import { useState, useEffect } from 'react';
+import { Trash2 } from 'lucide-react';
+import { SharedLayoutTransition } from '@/components/transitions/SharedLayoutTransition';
+import { ContentTransition } from '@/components/transitions/ContentTransition';
+import { Button } from '@/components/ui/button';
+
+interface PropertyCardProps {
+  property: Property;
+  compact?: boolean;
+  onDeleteClick?: (property: Property) => void;
+}
+
+const PropertyCard = ({ property, compact = false, onDeleteClick }: PropertyCardProps) => {
+  const [isValid, setIsValid] = useState(false);
+
+  // Validate property data when component mounts
+  useEffect(() => {
+    // Basic validation to ensure we have the required fields
+    const validProperty = 
+      property && 
+      typeof property === 'object' && 
+      property.id && 
+      property.name && 
+      property.address && 
+      property.status && 
+      property.riskLevel &&
+      property.alerts &&
+      property.lastInspection;
+    
+    setIsValid(!!validProperty);
+  }, [property]);
+
+  // If property data is invalid, render nothing
+  if (!isValid) {
+    return null;
+  }
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onDeleteClick) {
+      onDeleteClick(property);
+    }
+  };
+
+  const getStatusStyle = (status: PropertyStatus) => {
+    switch (status) {
+      case 'compliant':
+        return { bg: 'rgba(10, 145, 85, 0.15)', text: 'var(--brand-green)' };
+      case 'at-risk':
+        return { bg: 'rgba(237, 176, 21, 0.15)', text: 'var(--brand-gold)' };
+      case 'non-compliant':
+        return { bg: 'rgba(163, 67, 15, 0.15)', text: 'var(--brand-rust)' };
+      default:
+        return { bg: 'rgba(66, 42, 29, 0.15)', text: 'var(--brand-dark-brown)' };
+    }
+  };
+
+  const getRiskText = (risk: RiskLevel) => {
+    switch (risk) {
+      case 'high':
+        return 'High Risk';
+      case 'medium':
+        return 'Medium Risk';
+      case 'low':
+        return 'Low Risk';
+      case 'none':
+        return 'No Risk';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  const getRiskColor = (risk: RiskLevel) => {
+    switch (risk) {
+      case 'high':
+        return 'var(--brand-rust)';
+      case 'medium':
+        return 'var(--brand-gold)';
+      case 'low':
+        return 'var(--brand-green)';
+      case 'none':
+        return 'var(--brand-dark-green)';
+      default:
+        return 'var(--brand-dark-brown)';
+    }
+  };
+
+  // Ensure we have the expected structure
+  const alerts = property.alerts || { high: 0, medium: 0, low: 0 };
+  const lastInspection = property.lastInspection || { date: 'Unknown', daysAgo: 0 };
+  const statusStyle = getStatusStyle(property.status);
+
+  // Card header with status and delete button
+  const cardHeader = (
+    <div className="p-4 border-b border-gray-100">
+      <div className="flex justify-between items-center">
+        <ContentTransition delay={0.1} direction="right">
+          <h3 className="text-lg font-medium text-gray-900">{property.name}</h3>
+        </ContentTransition>
+        <ContentTransition delay={0.2} direction="left">
+          <div className="flex items-center gap-2">
+            <span 
+              className="inline-flex px-2 py-1 text-xs font-medium rounded-full"
+              style={{ 
+                backgroundColor: statusStyle.bg,
+                color: statusStyle.text
+              }}
+            >
+              {property.status === 'compliant' ? 'Compliant' : 
+              property.status === 'at-risk' ? 'At Risk' : 'Non-Compliant'}
+            </span>
+            
+            {onDeleteClick && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                onClick={handleDeleteClick}
+                title="Delete property"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </ContentTransition>
+      </div>
+      <ContentTransition delay={0.3} direction="up">
+        <p className="text-sm text-gray-500 mt-1">{property.address}</p>
+      </ContentTransition>
+    </div>
+  );
+
+  // Card details (only shown when not in compact mode)
+  const cardDetails = !compact && (
+    <div className="px-4 py-3">
+      <ContentTransition delay={0.4} direction="up">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="text-xs text-gray-500">Risk Level</div>
+            <div className="text-sm font-medium mt-1" style={{ color: getRiskColor(property.riskLevel) }}>
+              {getRiskText(property.riskLevel)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500">Last Inspection</div>
+            <div className="text-sm mt-1">
+              {lastInspection.date}
+              <span className="text-xs text-gray-500 ml-1">
+                ({lastInspection.daysAgo} days ago)
+              </span>
+            </div>
+          </div>
+        </div>
+      </ContentTransition>
+
+      <ContentTransition delay={0.5} direction="up">
+        <div className="mt-3">
+          <div className="text-xs text-gray-500 mb-1">Active Alerts</div>
+          <div className="flex flex-wrap gap-1">
+            {alerts.high > 0 && (
+              <span 
+                className="px-1.5 py-0.5 rounded text-xs"
+                style={{ 
+                  backgroundColor: 'rgba(163, 67, 15, 0.15)', 
+                  color: 'var(--brand-rust)' 
+                }}
+              >
+                {alerts.high} High
+              </span>
+            )}
+            {alerts.medium > 0 && (
+              <span 
+                className="px-1.5 py-0.5 rounded text-xs"
+                style={{ 
+                  backgroundColor: 'rgba(237, 176, 21, 0.15)', 
+                  color: 'var(--brand-gold)' 
+                }}
+              >
+                {alerts.medium} Med
+              </span>
+            )}
+            {alerts.low > 0 && (
+              <span 
+                className="px-1.5 py-0.5 rounded text-xs"
+                style={{ 
+                  backgroundColor: 'rgba(10, 145, 85, 0.15)', 
+                  color: 'var(--brand-green)' 
+                }}
+              >
+                {alerts.low} Low
+              </span>
+            )}
+            {alerts.high === 0 && alerts.medium === 0 && alerts.low === 0 && (
+              <span 
+                className="px-1.5 py-0.5 rounded text-xs"
+                style={{ 
+                  backgroundColor: 'rgba(11, 74, 46, 0.15)', 
+                  color: 'var(--brand-dark-green)' 
+                }}
+              >
+                None
+              </span>
+            )}
+          </div>
+        </div>
+        
+        {/* Group assignment info */}
+        <div className="mt-3">
+          <div className="text-xs text-gray-500 mb-1">Property Group</div>
+          <div className="flex flex-wrap gap-1">
+            {property.groupId ? (
+              <span 
+                className="px-1.5 py-0.5 rounded text-xs"
+                style={{ 
+                  backgroundColor: 'rgba(10, 145, 85, 0.15)', 
+                  color: 'var(--brand-green)' 
+                }}
+              >
+                {property.groupName || `Group #${property.groupId}`}
+              </span>
+            ) : (
+              <span 
+                className="px-1.5 py-0.5 rounded text-xs"
+                style={{ 
+                  backgroundColor: 'rgba(66, 42, 29, 0.15)', 
+                  color: 'var(--brand-dark-brown)' 
+                }}
+              >
+                Not assigned to any group
+              </span>
+            )}
+          </div>
+        </div>
+      </ContentTransition>
+    </div>
+  );
+
+  return (
+    <SharedLayoutTransition 
+      id={`property-overview-${property.id}`}
+      className="bg-white rounded-lg shadow-sm overflow-hidden transition-all"
+      withScale={true}
+    >
+      <motion.div 
+        whileHover={{ y: -4, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+        transition={{ duration: 0.2 }}
+      >
+        <div className="relative">
+          <Link href={`/properties/${property.id}`}>
+            <div className="cursor-pointer">
+              {cardHeader}
+              {cardDetails}
+            </div>
+          </Link>
+        </div>
+      </motion.div>
+    </SharedLayoutTransition>
+  );
+};
+
+export default PropertyCard;
