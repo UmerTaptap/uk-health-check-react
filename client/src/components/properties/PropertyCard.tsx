@@ -15,10 +15,10 @@ interface PropertyCardProps {
 
 const PropertyCard = ({ property, compact = false, onDeleteClick }: PropertyCardProps) => {
   const [isValid, setIsValid] = useState(false);
+  const [randomQuality, setRandomQuality] = useState(0);
 
-  // Validate property data when component mounts
+  // Validate property data when component mounts and set random quality
   useEffect(() => {
-    // Basic validation to ensure we have the required fields
     const validProperty = 
       property && 
       typeof property === 'object' && 
@@ -31,9 +31,16 @@ const PropertyCard = ({ property, compact = false, onDeleteClick }: PropertyCard
       property.lastInspection;
     
     setIsValid(!!validProperty);
+    
+    // Generate random quality between 10-100 (skewed to create more variation)
+    const random = Math.floor(Math.random() * 91) + 10;
+    // Occasionally create some very poor or excellent results
+    const skewedRandom = Math.random() > 0.8 
+      ? (Math.random() > 0.5 ? random + 20 : random - 20) 
+      : random;
+    setRandomQuality(Math.min(100, Math.max(0, skewedRandom)));
   }, [property]);
 
-  // If property data is invalid, render nothing
   if (!isValid) {
     return null;
   }
@@ -89,12 +96,10 @@ const PropertyCard = ({ property, compact = false, onDeleteClick }: PropertyCard
     }
   };
 
-  // Ensure we have the expected structure
   const alerts = property.alerts || { high: 0, medium: 0, low: 0 };
   const lastInspection = property.lastInspection || { date: 'Unknown', daysAgo: 0 };
   const statusStyle = getStatusStyle(property.status);
 
-  // Card header with status and delete button
   const cardHeader = (
     <div className="p-4 border-b border-gray-100">
       <div className="flex justify-between items-center">
@@ -134,7 +139,6 @@ const PropertyCard = ({ property, compact = false, onDeleteClick }: PropertyCard
     </div>
   );
 
-  // Card details (only shown when not in compact mode)
   const cardDetails = !compact && (
     <div className="px-4 py-3">
       <ContentTransition delay={0.4} direction="up">
@@ -160,7 +164,7 @@ const PropertyCard = ({ property, compact = false, onDeleteClick }: PropertyCard
       <ContentTransition delay={0.5} direction="up">
         <div className="mt-3">
           <div className="text-xs text-gray-500 mb-1">Active Alerts</div>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 mb-2">
             {alerts.high > 0 && (
               <span 
                 className="px-1.5 py-0.5 rounded text-xs"
@@ -206,6 +210,62 @@ const PropertyCard = ({ property, compact = false, onDeleteClick }: PropertyCard
               </span>
             )}
           </div>
+
+
+
+
+          {/* Quality Indicator */}
+          <div className="mt-2">
+            <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <span>Excellent</span>
+              <span>Poor</span>
+            </div>
+            <div className="relative h-4 w-full rounded-full overflow-hidden bg-gray-100">
+              <div 
+                className="absolute inset-0"
+                style={{
+                  background: `linear-gradient(90deg, 
+                    rgba(16, 185, 129, 0.7) 0%, 
+                    rgba(245, 158, 11, 0.7) 50%, 
+                    rgba(239, 68, 68, 0.7) 100%)`
+                }}
+              />
+              <div 
+                className="absolute top-0 bottom-0 left-0 bg-white bg-opacity-70"
+                style={{
+                  right: `${100 - randomQuality}%`,
+                  transition: 'right 0.5s ease'
+                }}
+              />
+
+
+
+
+
+              <div 
+                className="absolute top-0 h-4 w-1 bg-gray-900 rounded-full z-10"
+                style={{
+                  left: `${randomQuality}%`,
+                  transform: 'translateX(-50%)',
+                  transition: 'left 0.5s ease'
+                }}
+              />
+            </div>
+            {/* <div className="text-xs text-gray-500 mt-1 text-center">
+              {randomQuality >= 80 ? 'Excellent' : 
+               randomQuality >= 60 ? 'Good' : 
+               randomQuality >= 40 ? 'Fair' : 
+               randomQuality >= 20 ? 'Poor' : 'Critical'}
+            </div> */}
+          </div>
+
+          <ContentTransition delay={0.3} direction="up">
+            <p className="text-sm text-gray-500 mt-1">Deaths from respiratory diseases</p>
+          </ContentTransition>
+
+
+
+
         </div>
         
         {/* Group assignment info */}

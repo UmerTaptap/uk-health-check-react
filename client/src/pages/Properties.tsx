@@ -13,6 +13,42 @@ import { DetailPageSkeleton } from '@/components/skeletons';
 import { PropertyTransition } from '@/components/transitions/PropertyTransition';
 import { ContentTransition } from '@/components/transitions/ContentTransition';
 
+
+
+type Area = {
+  Code: string;
+  Name: string;
+  Short: string;
+  AreaTypeId: number;
+};
+
+type Indicator = {
+  IID: number;
+  IndicatorName: string;
+  AreaValue: string;
+  EnglandValue: string;
+  TimePeriod: string;
+  Definition: string;
+  Unit: string;
+  Polarity: string;
+  Significance: string;
+};
+
+const POLARITY_MAP: Record<number, {worst: 'min' | 'max', best: 'min' | 'max'}> = {
+  1: { worst: 'min', best: 'max' },
+  2: { worst: 'max', best: 'min' },
+  3: { worst: 'min', best: 'max' }
+};
+
+
+
+
+
+
+
+
+
+
 const Properties = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<PropertyStatus | 'all'>('all');

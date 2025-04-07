@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, PlusCircle, Download, FileText, AlertTriangle, ClipboardList } from 'lucide-react';
+import { ArrowLeft, PlusCircle, Download, FileText, AlertTriangle, ClipboardList, Search } from 'lucide-react';
 import { PropertyTransition } from '@/components/transitions/PropertyTransition';
 import { SharedLayoutTransition } from '@/components/transitions/SharedLayoutTransition';
 import { ContentTransition } from '@/components/transitions/ContentTransition';
@@ -13,6 +13,59 @@ import DocumentUploadModal from '@/components/documents/DocumentUploadModal';
 import SensorList from '@/components/sensors/SensorList';
 import PropertyGroupInfo from '@/components/property-groups/PropertyGroupInfo';
 import { DetailPageSkeleton } from '@/components/skeletons';
+import { useToast } from '@/hooks/use-toast';
+import { useDebounce } from '@/hooks/use-debounce';
+
+type Area = {
+  Code: string;
+  Name: string;
+  Short: string;
+  AreaTypeId: number;
+};
+
+type Indicator = {
+  IID: number;
+  IndicatorName: string;
+  AreaValue: string;
+  EnglandValue: string;
+  TimePeriod: string;
+  Definition: string;
+  Unit: string;
+  Polarity: string;
+  Significance: string;
+  Count?: string;
+  WorstValue?: string;
+  BestValue?: string;
+  Range?: string;
+  AgeGroup?: string;
+};
+
+const POLARITY_MAP: Record<number, {worst: 'min' | 'max', best: 'min' | 'max'}> = {
+  1: { worst: 'min', best: 'max' },
+  2: { worst: 'max', best: 'min' },
+  3: { worst: 'min', best: 'max' }
+};
+
+
+
+const DottedLoadingText = () => {
+  const [dots, setDots] = useState('');
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots(prev => prev.length >= 3 ? '' : prev + '.');
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="animate-pulse">Loading</span>
+      <span className="w-4 inline-block text-left">{dots}</span>
+    </span>
+  );
+};
 
 // Let's create a simple tabs component for now - we can expand this later
 const PropertyOverview = ({ property }: { property: Property }) => (
@@ -65,131 +118,178 @@ const PropertyOverview = ({ property }: { property: Property }) => (
 
 const PropertyDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [healthDataLoading, setHealthDataLoading] = useState(false);
+  const [selectedArea, setSelectedArea] = useState<Area | null>(null);
+  const [indicators, setIndicators] = useState<Indicator[]>([]);
+  const { toast } = useToast();
 
-  
   const { data: property, isLoading, error } = useQuery({
     queryKey: ['/api/properties', id],
     queryFn: async () => {
-      console.log(`Attempting to fetch property with ID: ${id}`);
-      
-      try {
-        // Use direct fetch API for more control over the request
-        const response = await fetch(`/api/properties/${id}`);
-        
-        if (!response.ok) {
-          // Log detailed error information for debugging
-          const errorText = await response.text();
-          console.error(`API Error (${response.status}) fetching property ${id}:`, errorText);
-          
-          // Check for specific error cases
-          if (response.status === 404) {
-            // Create a special error for 404 that we can identify later
-            const notFoundError = new Error(`Property with ID ${id} not found`);
-            notFoundError.name = 'NotFoundError';
-            throw notFoundError;
-          }
-          
-          throw new Error(`API error: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-        
-        // Validate essential property data
-        if (!data || !data.id) {
-          console.error("Invalid property data received:", data);
-          throw new Error("Received invalid property data from the server");
-        }
-        
-        console.log(`Successfully loaded property: ${data.name} (ID: ${data.id})`);
-        return data;
-      } catch (error) {
-        console.error(`Error fetching property with ID ${id}:`, error);
-        throw error;
-      }
-    },
-    refetchOnWindowFocus: true, // Auto-refresh when window gets focus
-    staleTime: 30000, // Consider data stale after 30 seconds
-    // Only retry if it's not a 404 error
-    retry: (failureCount, error) => {
-      // Don't retry for NotFoundError (404)
-      if (error instanceof Error && error.name === 'NotFoundError') {
-        return false;
-      }
-      // For all other errors, retry up to 3 times
-      return failureCount < 3;
-    },
-    refetchInterval: false // Don't automatically refetch at interval
-  });
-  
-  // Get documents for this property
-  const { data: documents = [] } = useQuery({
-    queryKey: [`/api/properties/${id}/documents`],
-    queryFn: async () => {
-      try {
-        const response = await apiRequest(`/api/properties/${id}/documents`, {
-          method: 'GET'
-        });
-        return response;
-      } catch (error) {
-        console.error("Error fetching documents:", error);
-        throw new Error('Failed to fetch documents');
-      }
-    },
-    // Only fetch documents if we have a valid property ID and no error fetching the property
-    enabled: !!id && !error,
-    refetchOnWindowFocus: true, // Auto-refresh when window gets focus
-    staleTime: 10000, // Consider data stale after 10 seconds
-    // Don't retry for 404 errors
-    retry: (failureCount, error) => {
-      if (error instanceof Error && error.message.includes('404')) {
-        return false;
-      }
-      return failureCount < 2;
+      const response = await fetch(`/api/properties/${id}`);
+      if (!response.ok) throw new Error('Failed to fetch property');
+      return response.json();
     }
   });
 
-  if (isLoading) {
-    return (
-      <PropertyTransition>
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="bg-white shadow-sm">
-            <div className="px-4 py-4 sm:px-6 lg:px-8">
-              <div className="animate-pulse h-8 bg-gray-200 rounded w-1/4"></div>
-            </div>
-          </header>
-          <main className="flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6 lg:p-8">
-            <DetailPageSkeleton />
-          </main>
-        </div>
-      </PropertyTransition>
-    );
-  }
+  // Extract city from address when property loads
+  useEffect(() => {
+    if (property?.address) {
+      const city = extractCityFromAddress(property.address);
+      if (city) {
+        searchAndSelectArea(city);
+      }
+    }
+  }, [property]);
 
-  if (error || !property) {
-    return (
-      <PropertyTransition>
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="bg-white shadow-sm">
-            <div className="px-4 py-4 sm:px-6 lg:px-8">
-              <Link href="/properties" className="text-primary flex items-center gap-1 mb-4">
-                <ArrowLeft className="h-4 w-4" /> Back to Properties
-              </Link>
-              <h1 className="text-2xl font-semibold text-gray-900">Property Not Found</h1>
-            </div>
-          </header>
-          <main className="flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6 lg:p-8">
-            <div className="bg-white rounded-lg shadow p-6 text-center">
-              <div className="text-high-risk text-xl">Error loading property details</div>
-              <p className="mt-2">The property you're looking for could not be found or there was an error loading it.</p>
-              <Link href="/properties" className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-blue-600">
-                Return to Properties
-              </Link>
-            </div>
-          </main>
-        </div>
-      </PropertyTransition>
-    );
-  }
+  const extractCityFromAddress = (address: string): string | null => {
+    // Regex to extract the city from addresses like "8 Birch Road, Manchester, M1 3LP, 7 Oak Lane, Manchester, M14 5RT"
+    const match = address.match(/,\s*([^,]+)(?=\s*,\s*[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}$)/);
+    const city = match ? match[1].trim() : null;
+    
+    console.log(`Cityyyyy: ${city}`); // Log the extracted city for validation
+    return city;
+  };
+
+
+
+  const searchAndSelectArea = async (city: string) => {
+    setHealthDataLoading(true);
+    try {
+      const response = await fetch(`/api/proxy/area-search?searchText=${encodeURIComponent(city)}`);
+      if (!response.ok) throw new Error("Failed to fetch areas");
+      const areas: Area[] = await response.json();
+      
+      const exactMatch = areas.find(area => 
+        area.Name.toLowerCase() === city.toLowerCase() || 
+        area.Short.toLowerCase() === city.toLowerCase()
+      );
+      
+      if (exactMatch) {
+        await fetchIndicatorData(exactMatch); // Wait for data to load
+        setSelectedArea(exactMatch);
+      } else if (areas.length > 0) {
+        await fetchIndicatorData(areas[0]); // Wait for data to load
+        setSelectedArea(areas[0]);
+      } else {
+        setHealthDataLoading(false);
+      }
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Couldn't fetch health data for this area",
+        variant: "destructive",
+      });
+      setHealthDataLoading(false);
+    }
+  };
+  
+  const fetchIndicatorData = async (area: Area) => {
+    try {
+      const [rawData, metadata, stats] = await Promise.all([
+        fetch(`/api/proxy/latest-data?areaCode=${area.Code}&profileId=143`).then(res => res.json()),
+        fetch(`/api/proxy/indicator-metadata?groupId=1938133185`).then(res => res.json()),
+        fetch(`/api/proxy/indicator-statistics?profileId=143&areaCode=E92000001`).then(res => res.json())
+      ]);
+  
+      const transformedData = transformIndicatorData(rawData, metadata, stats);
+      const uniqueIndicators = transformedData.filter(
+        (indicator, index, self) => 
+          index === self.findIndex((i) => i.IID === indicator.IID)
+      );
+      
+      setIndicators(uniqueIndicators);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Couldn't fetch health indicators",
+        variant: "destructive",
+      });
+      setIndicators([]);
+    } finally {
+      setHealthDataLoading(false);
+    }
+  };
+
+
+  const transformIndicatorData = (rawData: any[], metadata: any, stats: any): Indicator[] => {
+    return rawData.map(item => {
+      const indicatorMeta = metadata[item.IID.toString()];
+      if (!indicatorMeta) return null;
+
+      const polarity = indicatorMeta.Descriptive?.PolarityId || item.PolarityId || 1;
+      const polarityConfig = POLARITY_MAP[polarity] || POLARITY_MAP[1];
+
+      const indicatorStats = Object.values(stats).find((stat: any) => stat.IID === item.IID) as any;
+      
+      const localValue = parseFloat(item.Data?.[0]?.Val);
+      const englandValue = parseFloat(item.Grouping?.[0]?.ComparatorData?.Val);
+      
+      let worstValue, bestValue;
+      if (indicatorStats?.Stats) {
+        worstValue = polarityConfig.worst === 'max' 
+          ? indicatorStats.Stats.Max 
+          : indicatorStats.Stats.Min;
+        bestValue = polarityConfig.best === 'max' 
+          ? indicatorStats.Stats.Max 
+          : indicatorStats.Stats.Min;
+      }
+
+      const cleanName = cleanIndicatorName(indicatorMeta.Descriptive.Name);
+      const ageGroup = extractAgeGroup(indicatorMeta.Descriptive.Name);
+
+      const significance = localValue > englandValue 
+        ? (polarity === 1 ? "Better than England" : "Worse than England")
+        : localValue < englandValue 
+          ? (polarity === 1 ? "Worse than England" : "Better than England")
+          : "Similar to England";
+
+      return {
+        IID: item.IID,
+        IndicatorName: cleanName,
+        AreaValue: formatValue(localValue, indicatorMeta.Unit.Label),
+        EnglandValue: formatValue(englandValue, indicatorMeta.Unit.Label),
+        TimePeriod: item.Period || "Latest",
+        Definition: indicatorMeta.Descriptive.Definition,
+        Unit: indicatorMeta.Unit.Label,
+        Polarity: getPolarityLabel(polarity),
+        Significance: significance,
+        WorstValue: formatValue(worstValue, indicatorMeta.Unit.Label),
+        BestValue: formatValue(bestValue, indicatorMeta.Unit.Label),
+        Range: indicatorStats?.Stats ? 
+          `${formatValue(indicatorStats.Stats.Min, indicatorMeta.Unit.Label)} - ${formatValue(indicatorStats.Stats.Max, indicatorMeta.Unit.Label)}` : "N/A",
+        AgeGroup: ageGroup
+      };
+    }).filter(Boolean) as Indicator[];
+  };
+
+  const formatValue = (value: number, unit: string): string => {
+    if (value === undefined || value === null) return "N/A";
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    if (unit === "%") return `${numValue.toFixed(1)}%`;
+    if (unit === "per 1,000") return `${numValue.toFixed(1)} per 1,000`;
+    return numValue.toString();
+  };
+
+  const cleanIndicatorName = (name: string): string => {
+    return name
+      .replace(/\s*\(\d+[\s-]+\d+\s+yrs\)/i, "")
+      .replace(/\s*\([^)]*\)/g, "");
+  };
+  
+  const extractAgeGroup = (name: string): string => {
+    const ageMatch = name.match(/\((\d+[\s-]+\d+\s+yrs)\)/i);
+    return ageMatch ? ageMatch[1] : "";
+  };
+
+  const getPolarityLabel = (polarityId: number): string => {
+    switch(polarityId) {
+      case 1: return "Higher values are better";
+      case 2: return "Lower values are better";
+      case 3: return "No clear better/worse";
+      default: return "Higher values are better";
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -204,6 +304,22 @@ const PropertyDetail = () => {
     }
   };
 
+  if (isLoading) {
+    return <DetailPageSkeleton />;
+  }
+
+  if (error || !property) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6 text-center">
+        <div className="text-high-risk text-xl">Error loading property details</div>
+        <p className="mt-2">The property you're looking for could not be found or there was an error loading it.</p>
+        <Link href="/properties" className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-blue-600">
+          Return to Properties
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <PropertyTransition propertyId={id}>
       <div className="flex flex-col flex-1 overflow-hidden">
@@ -214,93 +330,160 @@ const PropertyDetail = () => {
             </Link>
             <div className="flex justify-between items-center">
               <div>
-                <ContentTransition delay={0.1} direction="right">
-                  <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
-                    {property.name}
-                    {getStatusBadge(property.status)}
-                  </h1>
-                </ContentTransition>
-                <ContentTransition delay={0.2} direction="right">
-                  <p className="text-gray-500">
-                    {property.address}
-                  </p>
-                </ContentTransition>
+                <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
+                  {property.name}
+                  {getStatusBadge(property.status)}
+                </h1>
+                <p className="text-gray-500">
+                  {property.address}
+                </p>
               </div>
               <div className="flex gap-2">
-                <ContentTransition delay={0.3} direction="left">
-                  <button className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    <Download className="h-5 w-5 mr-2" />
-                    Export Report
-                  </button>
-                </ContentTransition>
-                <ContentTransition delay={0.4} direction="left">
-                  <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white"
-                          style={{ backgroundColor: 'var(--brand-green)' }}>
-                    <PlusCircle className="h-5 w-5 mr-2" />
-                    Schedule Inspection
-                  </button>
-                </ContentTransition>
+                <button className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                  <Download className="h-5 w-5 mr-2" />
+                  Export Report
+                </button>
+                <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white"
+                        style={{ backgroundColor: 'var(--brand-green)' }}>
+                  <PlusCircle className="h-5 w-5 mr-2" />
+                  Schedule Inspection
+                </button>
               </div>
             </div>
           </div>
         </header>
         
         <main className="flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6 lg:p-8">
-          {/* Quick Links */}
-          <ContentTransition delay={0.3} direction="right">
-            <div className="mb-6 flex flex-wrap gap-3">
-              <Link 
-                to={`/alerts?propertyId=${id}`}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:text-amber-600 transition-colors shadow-sm"
-              >
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                View Alerts
-              </Link>
-              <Link 
-                to={`/work-orders?propertyId=${id}`}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:text-blue-600 transition-colors shadow-sm"
-              >
-                <ClipboardList className="h-4 w-4 mr-2" />
-                Work Orders
-              </Link>
-              <Link 
-                to={`/work-orders?create=true&propertyId=${id}`}
-                className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-black bg-emerald-100 hover:bg-emerald-200 transition-colors shadow-sm"
-              >
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Create Work Order
-              </Link>
-            </div>
-          </ContentTransition>
-          
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2">
-                <SharedLayoutTransition id={`property-overview-${id}`} withScale duration={0.5}>
-                  <div className="bg-white rounded-lg shadow-sm">
-                    <PropertyOverview property={property} />
-                  </div>
-                </SharedLayoutTransition>
-              </div>
-              <div className="md:col-span-1">
-                <ContentTransition delay={0.5} direction="left">
-                  <PropertyGroupInfo propertyId={id} groupId={property.groupId} />
-                </ContentTransition>
-              </div>
-            </div>
-            
-            <ContentTransition delay={0.6} direction="up">
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <SensorList propertyId={id} />
-              </div>
-            </ContentTransition>
-            
-            <ContentTransition delay={0.7} direction="up">
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <DocumentList propertyId={id} />
-              </div>
-            </ContentTransition>
+          <div className="mb-6 flex flex-wrap gap-3">
+            <Link 
+              to={`/alerts?propertyId=${id}`}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:text-amber-600 transition-colors shadow-sm"
+            >
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              View Alerts
+            </Link>
+            <Link 
+              to={`/work-orders?propertyId=${id}`}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:text-blue-600 transition-colors shadow-sm"
+            >
+              <ClipboardList className="h-4 w-4 mr-2" />
+              Work Orders
+            </Link>
+            <Link 
+              to={`/work-orders?create=true&propertyId=${id}`}
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-black bg-emerald-100 hover:bg-emerald-200 transition-colors shadow-sm"
+            >
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Create Work Order
+            </Link>
           </div>
+          
+
+
+
+        {/* Health Data Section */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Local Health Indicators</h2>
+            {healthDataLoading ? (
+              <span className="text-sm text-gray-500">
+                <DottedLoadingText />
+              </span>
+            ) : selectedArea ? (
+              <span className="text-sm text-gray-500">
+                {selectedArea.Name}
+              </span>
+            ) : null}
+          </div>
+          
+          {healthDataLoading ? (
+            <div className="flex flex-col items-center justify-center h-48 text-gray-500 gap-2">
+              <DottedLoadingText />
+              <p className="text-sm">Gathering health data for this area</p>
+            </div>
+          ) : indicators.length > 0 ? (
+            <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+              <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Indicator</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Local Value</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">England</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Range</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Comparison</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {indicators.map((indicator) => (
+                        <tr key={indicator.IID} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 whitespace-normal max-w-xs">
+                            <div className="font-medium text-gray-900">{indicator.IndicatorName}</div>
+                            {indicator.AgeGroup && (
+                              <div className="text-xs text-gray-500 mt-1">{indicator.AgeGroup}</div>
+                            )}
+                            <div className="text-xs text-gray-400 mt-1">{indicator.Polarity}</div>
+                          </td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-500">
+                            {indicator.TimePeriod}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`font-medium ${
+                              indicator.Significance === "Worse than England" ? "text-red-600" :
+                              indicator.Significance === "Better than England" ? "text-emerald-600" : "text-gray-700"
+                            }`}>
+                              {indicator.AreaValue} <span className="text-xs text-gray-400">{indicator.Unit}</span>
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-500">
+                            {indicator.EnglandValue} <span className="text-xs text-gray-400">{indicator.Unit}</span>
+                          </td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-500">
+                            <div className="flex flex-col">
+                              <span className="text-xs text-red-500">Worst: {indicator.WorstValue}</span>
+                              <span className="text-xs text-emerald-500">Best: {indicator.BestValue}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              indicator.Significance === "Worse than England" ? "bg-red-100 text-red-800" :
+                              indicator.Significance === "Better than England" ? "bg-emerald-100 text-emerald-800" :
+                              "bg-gray-100 text-gray-800"
+                            }`}>
+                              {indicator.Significance}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+            </div>
+          ) : selectedArea ? (
+            <div className="p-8 bg-gray-50 rounded-lg border border-gray-200 text-center">
+              <p className="text-gray-500">No health data available for this area</p>
+            </div>
+          ) : (
+            <div className="p-8 bg-gray-50 rounded-lg border border-gray-200 text-center">
+              <p className="text-gray-500">Could not determine local area for this property</p>
+            </div>
+          )}
+        </div>
+
+
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+            <SensorList propertyId={id} />
+        </div>
+            
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <DocumentList propertyId={id} />
+        </div>
+
+
+
+
         </main>
       </div>
     </PropertyTransition>
@@ -308,3 +491,4 @@ const PropertyDetail = () => {
 };
 
 export default PropertyDetail;
+
