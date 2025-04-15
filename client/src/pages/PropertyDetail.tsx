@@ -16,6 +16,21 @@ import { DetailPageSkeleton } from '@/components/skeletons';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
 
+
+const getColorForComparison = (
+  localValue: number, 
+  englandValue: number, 
+  isHigherBetter: boolean
+): string => {
+  if (localValue > englandValue) {
+    return isHigherBetter ? '#10B981' : '#EF4444'; // Green if better, red if worse
+  } else if (localValue < englandValue) {
+    return isHigherBetter ? '#EF4444' : '#10B981'; // Red if worse, green if better
+  }
+  return '#6B7280'; // Gray if equal
+};
+
+
 type Area = {
   Code: string;
   Name: string;
@@ -381,95 +396,190 @@ const PropertyDetail = () => {
 
 
 
-        {/* Health Data Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Local Health Indicators</h2>
-            {healthDataLoading ? (
-              <span className="text-sm text-gray-500">
-                <DottedLoadingText />
-              </span>
-            ) : selectedArea ? (
-              <span className="text-sm text-gray-500">
-                {selectedArea.Name}
-              </span>
-            ) : null}
-          </div>
-          
-          {healthDataLoading ? (
-            <div className="flex flex-col items-center justify-center h-48 text-gray-500 gap-2">
-              <DottedLoadingText />
-              <p className="text-sm">Gathering health data for this area</p>
-            </div>
-          ) : indicators.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-              <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Indicator</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Local Value</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">England</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Range</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Comparison</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {indicators.map((indicator) => (
-                        <tr key={indicator.IID} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 whitespace-normal max-w-xs">
-                            <div className="font-medium text-gray-900">{indicator.IndicatorName}</div>
-                            {indicator.AgeGroup && (
-                              <div className="text-xs text-gray-500 mt-1">{indicator.AgeGroup}</div>
-                            )}
-                            <div className="text-xs text-gray-400 mt-1">{indicator.Polarity}</div>
-                          </td>
-                          <td className="px-4 py-3 text-center text-sm text-gray-500">
-                            {indicator.TimePeriod}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`font-medium ${
-                              indicator.Significance === "Worse than England" ? "text-red-600" :
-                              indicator.Significance === "Better than England" ? "text-emerald-600" : "text-gray-700"
-                            }`}>
-                              {indicator.AreaValue} <span className="text-xs text-gray-400">{indicator.Unit}</span>
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center text-sm text-gray-500">
-                            {indicator.EnglandValue} <span className="text-xs text-gray-400">{indicator.Unit}</span>
-                          </td>
-                          <td className="px-4 py-3 text-center text-sm text-gray-500">
-                            <div className="flex flex-col">
-                              <span className="text-xs text-red-500">Worst: {indicator.WorstValue}</span>
-                              <span className="text-xs text-emerald-500">Best: {indicator.BestValue}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              indicator.Significance === "Worse than England" ? "bg-red-100 text-red-800" :
-                              indicator.Significance === "Better than England" ? "bg-emerald-100 text-emerald-800" :
-                              "bg-gray-100 text-gray-800"
-                            }`}>
-                              {indicator.Significance}
-                            </span>
-                          </td>
+
+
+
+          {/* Health Data Section */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-xl font-semibold text-gray-900">Local Health Indicators</h2>
+                      {healthDataLoading ? (
+                        <span className="text-sm text-gray-500">
+                          <DottedLoadingText />
+                        </span>
+                      ) : selectedArea ? (
+                        <span className="text-sm text-gray-500">
+                          {selectedArea.Name}
+                        </span>
+                      ) : null}
+                    </div>
+                    
+                    {healthDataLoading ? (
+                      <div className="flex flex-col items-center justify-center h-48 text-gray-500 gap-2">
+                        <DottedLoadingText />
+                        <p className="text-sm">Gathering health data for this area</p>
+                      </div>
+                    ) : indicators.length > 0 ? (
+                      <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Indicator</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Local Value</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">England</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Range</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Comparison</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Indicator</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-            </div>
-          ) : selectedArea ? (
-            <div className="p-8 bg-gray-50 rounded-lg border border-gray-200 text-center">
-              <p className="text-gray-500">No health data available for this area</p>
-            </div>
-          ) : (
-            <div className="p-8 bg-gray-50 rounded-lg border border-gray-200 text-center">
-              <p className="text-gray-500">Could not determine local area for this property</p>
-            </div>
-          )}
-        </div>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {indicators.map((indicator) => {
+                          // Calculate position for the indicator (simple example - you might want more sophisticated logic)
+                          const localValue = parseFloat(indicator.AreaValue.replace(/[^\d.-]/g, ''));
+                          const englandValue = parseFloat(indicator.EnglandValue.replace(/[^\d.-]/g, ''));
+                          const worstValue = parseFloat(indicator.WorstValue?.replace(/[^\d.-]/g, '') || '0');
+                          const bestValue = parseFloat(indicator.BestValue?.replace(/[^\d.-]/g, '') || '100');
+                          
+                          // Calculate position between worst and best (0-100%)
+                          const range = bestValue - worstValue;
+                          const localPosition = range !== 0 ? ((localValue - worstValue) / range) * 100 : 50;
+                          const englandPosition = range !== 0 ? ((englandValue - worstValue) / range) * 100 : 50;
+                          
+                          return (
+                            <tr key={indicator.IID} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-3 whitespace-normal max-w-xs">
+                                <div className="font-medium text-gray-900">{indicator.IndicatorName}</div>
+                                {indicator.AgeGroup && (
+                                  <div className="text-xs text-gray-500 mt-1">{indicator.AgeGroup}</div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-center text-sm text-gray-500">
+                                {indicator.TimePeriod}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`font-medium ${
+                                  indicator.Significance === "Worse than England" ? "text-red-600" :
+                                  indicator.Significance === "Better than England" ? "text-emerald-600" : "text-gray-700"
+                                }`}>
+                                  {indicator.AreaValue} <span className="text-xs text-gray-400">{indicator.Unit}</span>
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center text-sm text-gray-500">
+                                {indicator.EnglandValue} <span className="text-xs text-gray-400">{indicator.Unit}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center text-sm text-gray-500">
+                                <div className="flex flex-col">
+                                  <span className="text-xs text-red-500">Worst: {indicator.WorstValue}</span>
+                                  <span className="text-xs text-emerald-500">Best: {indicator.BestValue}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  indicator.Significance === "Worse than England" ? "bg-red-100 text-red-800" :
+                                  indicator.Significance === "Better than England" ? "bg-emerald-100 text-emerald-800" :
+                                  "bg-gray-100 text-gray-800"
+                                }`}>
+                                  {indicator.Significance}
+                                </span>
+                              </td>
+
+
+
+
+                              <td className="px-4 py-3">
+                                <div className="mt-2">
+                                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                    <span>Low</span>
+                                    <span>High</span>
+                                  </div>
+                                  <div className="relative h-4 w-full rounded-full overflow-hidden bg-gray-100">
+                                    <div 
+                                      className="absolute inset-0"
+                                      style={{
+                                        background: `linear-gradient(90deg, 
+                                          rgba(16, 185, 129, 0.7) 0%, 
+                                          rgba(245, 158, 11, 0.7) 50%, 
+                                          rgba(239, 68, 68, 0.7) 100%)`
+                                      }}
+                                    />
+                                    {/* England Marker */}
+                                    <div 
+                                      className="absolute top-0 h-4 w-1 bg-blue-500 rounded-full z-10"
+                                      style={{
+                                        left: `${englandPosition}%`,
+                                        transform: 'translateX(-50%)',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                      }}
+                                    >
+                                      <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-xs text-blue-600 font-medium">
+                                        England
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Local Marker */}
+                                    <div 
+                                      className="absolute top-0 h-4 w-1.5 bg-gray-900 rounded-full z-20"
+                                      style={{
+                                        left: `${localPosition}%`,
+                                        transform: 'translateX(-50%)',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                      }}
+                                    >
+                                      <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-xs text-gray-900 font-medium">
+                                        Local
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Value Labels */}
+                                  <div className="flex justify-between text-xs text-gray-500 mt-2">
+                                    <span className="text-blue-600">England: {indicator.EnglandValue}</span>
+                                    <span className="text-gray-900">Local: {indicator.AreaValue}</span>
+                                  </div>
+                                </div>
+                              </td>
+
+
+
+                            
+                            
+
+
+
+
+
+
+
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                    ) : selectedArea ? (
+                      <div className="p-8 bg-gray-50 rounded-lg border border-gray-200 text-center">
+                        <p className="text-gray-500">No health data available for this area</p>
+                      </div>
+                    ) : (
+                      <div className="p-8 bg-gray-50 rounded-lg border border-gray-200 text-center">
+                        <p className="text-gray-500">Could not determine local area for this property</p>
+                      </div>
+                    )}
+          </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -161,6 +161,9 @@ const PropertyCard = ({ property, compact = false, onDeleteClick }: PropertyCard
         </div>
       </ContentTransition>
 
+
+
+{/* 
       <ContentTransition delay={0.5} direction="up">
         <div className="mt-3">
           <div className="text-xs text-gray-500 mb-1">Active Alerts</div>
@@ -214,10 +217,9 @@ const PropertyCard = ({ property, compact = false, onDeleteClick }: PropertyCard
 
 
 
-          {/* Quality Indicator */}
           <div className="mt-2">
             <div className="flex justify-between text-xs text-gray-500 mb-1">
-              <span>Excellent</span>
+              <span>Good</span>
               <span>Poor</span>
             </div>
             <div className="relative h-4 w-full rounded-full overflow-hidden bg-gray-100">
@@ -251,12 +253,7 @@ const PropertyCard = ({ property, compact = false, onDeleteClick }: PropertyCard
                 }}
               />
             </div>
-            {/* <div className="text-xs text-gray-500 mt-1 text-center">
-              {randomQuality >= 80 ? 'Excellent' : 
-               randomQuality >= 60 ? 'Good' : 
-               randomQuality >= 40 ? 'Fair' : 
-               randomQuality >= 20 ? 'Poor' : 'Critical'}
-            </div> */}
+        
           </div>
 
           <ContentTransition delay={0.3} direction="up">
@@ -268,7 +265,6 @@ const PropertyCard = ({ property, compact = false, onDeleteClick }: PropertyCard
 
         </div>
         
-        {/* Group assignment info */}
         <div className="mt-3">
           <div className="text-xs text-gray-500 mb-1">Property Group</div>
           <div className="flex flex-wrap gap-1">
@@ -295,7 +291,12 @@ const PropertyCard = ({ property, compact = false, onDeleteClick }: PropertyCard
             )}
           </div>
         </div>
-      </ContentTransition>
+      </ContentTransition> */}
+
+
+
+
+
     </div>
   );
 
