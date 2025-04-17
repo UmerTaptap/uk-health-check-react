@@ -29,8 +29,8 @@ type Indicator = {
 
 // Add this to your component or a config file
 const POLARITY_MAP: Record<number, {worst: 'min' | 'max', best: 'min' | 'max'}> = {
-  1: { worst: 'min', best: 'max' }, // Higher is better (e.g., vaccination rates)
-  2: { worst: 'max', best: 'min' }, // Lower is better (e.g., poverty rates)
+  1: { worst: 'min', best: 'max' }, // Higher is better
+  2: { worst: 'max', best: 'min' }, // Lower is better (mortality)
   3: { worst: 'min', best: 'max' }  // Neutral
 };
 
@@ -81,118 +81,144 @@ export default function HealthDataExplorer() {
     }
   }, [selectedArea]);
 
+
+
+
   const fetchIndicatorData = async () => {
     if (!selectedArea) return;
     
     setLoading(true);
+    console.time('Total fetch time'); // Start performance timer
+  
     try {
-      // Fetch the latest data for the area
-      const response = await fetch(
-        `/api/proxy/latest-data?areaCode=${selectedArea.Code}&profileId=143`
-      );
-      
-      if (!response.ok) throw new Error("Failed to fetch indicator data");
-      const rawData = await response.json();
-      
-      // Fetch metadata for all indicators in the group
-      const metadataResponse = await fetch(
-        `/api/proxy/indicator-metadata?groupId=1938133185`
-      );
-      if (!metadataResponse.ok) throw new Error("Failed to fetch indicator metadata");
-      const metadata = await metadataResponse.json();
-      
-      // Fetch statistics for comparison
-      const statsResponse = await fetch(
-        `/api/proxy/indicator-statistics?profileId=143&areaCode=E92000001`
-      );
-      if (!statsResponse.ok) throw new Error("Failed to fetch statistics");
-      const stats = await statsResponse.json();
-
-
-      console.log("Raw API response:", rawData);
-      console.log("Raw stats response:", stats);
-
-      
-      // Transform the data into a more usable format
+      // Parallelize API calls
+      console.time('API calls');
+      const [rawResponse, metadataResponse, statsResponse] = await Promise.all([
+        fetch(`/api/proxy/latest-data?areaCode=${selectedArea.Code}&profileId=143`),
+        fetch(`/api/proxy/indicator-metadata?groupId=1938133185`),
+        fetch(`/api/proxy/indicator-statistics?profileId=143&areaCode=E92000001`)
+      ]);
+      console.timeEnd('API calls');
+  
+      // Check for errors
+      if (!rawResponse.ok) throw new Error('Raw data failed: ' + rawResponse.status);
+      if (!metadataResponse.ok) throw new Error('Metadata failed: ' + metadataResponse.status);
+      if (!statsResponse.ok) throw new Error('Stats failed: ' + statsResponse.status);
+  
+      // Parallelize data parsing
+      console.time('Data parsing');
+      const [rawData, metadata, stats] = await Promise.all([
+        rawResponse.json(),
+        metadataResponse.json(),
+        statsResponse.json()
+      ]);
+      console.timeEnd('Data parsing');
+  
+      console.debug('Data sizes:', {
+        rawData: rawData.length,
+        metadata: Object.keys(metadata).length,
+        stats: Object.values(stats).length
+      });
+  
+      // Transform data
+      console.time('Data transformation');
       const transformedData = transformIndicatorData(rawData, metadata, stats);
-      
-      // Filter out duplicates by keeping only one entry per IID
-      const uniqueIndicators = transformedData.filter(
-        (indicator, index, self) => 
-          index === self.findIndex((i) => i.IID === indicator.IID)
+      console.timeEnd('Data transformation');
+  
+      // Efficient unique filtering using Set
+      console.time('Deduplication');
+      const uniqueIndicators = transformedData.filter((indicator, index, self) =>
+        index === self.findIndex((t) => t.IID === indicator.IID)
       );
-      
+      console.timeEnd('Deduplication');
+  
+      console.debug('Final indicators:', uniqueIndicators);
       setIndicators(uniqueIndicators);
     } catch (err) {
-      toast({
-        title: "Error",
-        description: "Couldn't fetch health data",
-        variant: "destructive",
-      });
+      console.error('Data fetch error:', err);
+      toast({ title: "Error", description: "Couldn't fetch data", variant: "destructive" });
       setIndicators([]);
     } finally {
+      console.timeEnd('Total fetch time');
       setLoading(false);
     }
   };
-
-
-
+  
   const transformIndicatorData = (rawData: any[], metadata: any, stats: any): Indicator[] => {
-    return rawData.map(item => {
-      const indicatorMeta = metadata[item.IID.toString()];
-      if (!indicatorMeta) return null;
+    console.time('Transform indicators');
+    
+    // Create a Map for faster stats lookup
+    const statsMap = new Map(
+      (Object.values(stats) as any[]).map(stat => [stat.IID, stat.Stats]
+    ));
   
-      // Get the correct polarity from metadata (this was the key issue)
-      const polarity = indicatorMeta.Descriptive?.PolarityId || item.PolarityId || 1;
-      const polarityConfig = POLARITY_MAP[polarity] || POLARITY_MAP[1];
+    const result = rawData.reduce((acc: Indicator[], item) => {
+      try {
+        // Get metadata early
+        const indicatorMeta = metadata[item.IID.toString()];
+        if (!indicatorMeta) return acc;
   
-      // Find the matching stats for this indicator
-      const indicatorStats = Object.values(stats).find((stat: any) => stat.IID === item.IID) as any;
-      
-      // Get raw values
-      const localValue = parseFloat(item.Data?.[0]?.Val);
-      const englandValue = parseFloat(item.Grouping?.[0]?.ComparatorData?.Val);
-      
-      // Calculate worst/best based on polarity
-      let worstValue, bestValue;
-      if (indicatorStats?.Stats) {
-        worstValue = polarityConfig.worst === 'max' 
-          ? indicatorStats.Stats.Max 
-          : indicatorStats.Stats.Min;
-        bestValue = polarityConfig.best === 'max' 
-          ? indicatorStats.Stats.Max 
-          : indicatorStats.Stats.Min;
+        // Filter for mortality indicators early
+        const indicatorName = indicatorMeta.Descriptive?.Name || '';
+        if (!indicatorName.toLowerCase().includes('mortality')) return acc;
+  
+        // Get stats from Map
+        const indicatorStats = statsMap.get(item.IID);
+  
+        // Value processing
+        const localValue = parseFloat(item.Data?.[0]?.Val);
+        const englandValue = parseFloat(item.Grouping?.[0]?.ComparatorData?.Val);
+        
+        // Skip invalid data
+        if (isNaN(localValue) || isNaN(englandValue)) return acc;
+  
+        // Polarity handling
+        const forcedPolarity = 2; // Force mortality polarity
+        const polarityConfig = POLARITY_MAP[forcedPolarity];
+        const worstValue = indicatorStats ? 
+          (polarityConfig.worst === 'max' ? indicatorStats.Max : indicatorStats.Min) : null;
+        const bestValue = indicatorStats ? 
+          (polarityConfig.best === 'max' ? indicatorStats.Max : indicatorStats.Min) : null;
+  
+        // Name processing
+        const cleanName = cleanIndicatorName(indicatorMeta.Descriptive.Name);
+        const ageGroup = extractAgeGroup(indicatorMeta.Descriptive.Name);
+  
+        // Significance calculation
+        const significance = calculateSignificance(
+          item.Significance,
+          forcedPolarity,
+          localValue,
+          englandValue
+        );
+  
+        acc.push({
+          IID: item.IID,
+          IndicatorName: cleanName,
+          AreaValue: formatValue(localValue, indicatorMeta.Unit.Label),
+          EnglandValue: formatValue(englandValue, indicatorMeta.Unit.Label),
+          TimePeriod: item.Period || "Latest",
+          Definition: indicatorMeta.Descriptive.Definition,
+          Unit: indicatorMeta.Unit.Label,
+          Polarity: "Lower values are better",
+          Significance: significance,
+          WorstValue: formatValue(worstValue, indicatorMeta.Unit.Label),
+          BestValue: formatValue(bestValue, indicatorMeta.Unit.Label),
+          Range: indicatorStats ? 
+            `${formatValue(indicatorStats.Min, indicatorMeta.Unit.Label)} - ${
+            formatValue(indicatorStats.Max, indicatorMeta.Unit.Label)}` : "N/A",
+          AgeGroup: ageGroup
+        });
+      } catch (error) {
+        console.warn('Error processing indicator', item.IID, error);
       }
+      return acc;
+    }, []);
   
-      // Clean up the indicator name
-      const cleanName = cleanIndicatorName(indicatorMeta.Descriptive.Name);
-      const ageGroup = extractAgeGroup(indicatorMeta.Descriptive.Name);
-  
-      // Calculate significance (simplified for example)
-      const significance = localValue > englandValue 
-        ? (polarity === 1 ? "Better than England" : "Worse than England")
-        : localValue < englandValue 
-          ? (polarity === 1 ? "Worse than England" : "Better than England")
-          : "Similar to England";
-  
-      return {
-        IID: item.IID,
-        IndicatorName: cleanName,
-        AreaValue: formatValue(localValue, indicatorMeta.Unit.Label),
-        EnglandValue: formatValue(englandValue, indicatorMeta.Unit.Label),
-        TimePeriod: item.Period || "Latest",
-        Definition: indicatorMeta.Descriptive.Definition,
-        Unit: indicatorMeta.Unit.Label,
-        Polarity: getPolarityLabel(polarity),
-        Significance: significance,
-        WorstValue: formatValue(worstValue, indicatorMeta.Unit.Label),
-        BestValue: formatValue(bestValue, indicatorMeta.Unit.Label),
-        Range: indicatorStats?.Stats ? 
-          `${formatValue(indicatorStats.Stats.Min, indicatorMeta.Unit.Label)} - ${formatValue(indicatorStats.Stats.Max, indicatorMeta.Unit.Label)}` : "N/A",
-        AgeGroup: ageGroup
-      };
-    }).filter(Boolean) as Indicator[];
+    console.timeEnd('Transform indicators');
+    return result;
   };
+  
 
 
   
