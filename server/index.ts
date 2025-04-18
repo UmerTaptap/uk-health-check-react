@@ -1,9 +1,17 @@
 import express, { type Request, Response, NextFunction } from "express";
-import fileUpload from "express-fileupload";
+import mongoose from 'mongoose';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import axios from "axios";
+import { UserController } from "./controllers/UserController";
+import { UserRoutes } from "./routes/UserRoutes";
+import { HealthDataController } from "./controllers/HealthDataController";
+import { HealthDataRoute } from "./routes/HealthDataRoute";
+import cors from 'cors';
+import 'dotenv/config';
 const app = express();
+const MONGO_URI = process.env.MONGO_URI || 'your-fallback-uri';
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 // Temporarily comment out express-fileupload middleware to use a custom implementation
@@ -46,6 +54,25 @@ app.use((req, res, next) => {
 
   next();
 });
+
+
+
+
+
+const userController = new UserController();
+const userRoutes = new UserRoutes(userController);
+app.use('/api', userRoutes.getRouter());
+
+
+const healthDataController = new HealthDataController();
+const healthDataRoute = new HealthDataRoute(healthDataController);
+app.use('/api', healthDataRoute.getRouter());
+
+
+
+
+
+
 
 
 
@@ -170,6 +197,24 @@ app.get('/api/proxy/indicator-statistics', async (req, res) => {
   }
 });
 
+
+
+mongoose.connect(MONGO_URI)
+  .then(() => log('Connected to MongoDB'))
+  .catch((err) => log('MongoDB connection error:', err));
+
+// Add event listeners for MongoDB connection
+mongoose.connection.on('connected', () => {
+  log('Mongoose connected to DB');
+});
+
+mongoose.connection.on('error', (err) => {
+  log('Mongoose connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  log('Mongoose disconnected');
+});
 
 
 (async () => {

@@ -111,39 +111,62 @@ const PropertyDetail = () => {
     }
   };
 
-  const fetchIndicatorData = async (area: Area) => {
+  // const fetchIndicatorData = async (area: Area) => {
+  //   setHealthDataLoading(true);
+  //   console.time('Total fetch time');
+
+  //   try {
+  //     const [rawResponse, metadataResponse, statsResponse] = await Promise.all([
+  //       fetch(`/api/proxy/latest-data?areaCode=${area.Code}&profileId=143`),
+  //       fetch(`/api/proxy/indicator-metadata?groupId=1938133185`),
+  //       fetch(`/api/proxy/indicator-statistics?profileId=143&areaCode=E92000001`)
+  //     ]);
+
+  //     if (!rawResponse.ok) throw new Error('Raw data failed: ' + rawResponse.status);
+  //     if (!metadataResponse.ok) throw new Error('Metadata failed: ' + metadataResponse.status);
+  //     if (!statsResponse.ok) throw new Error('Stats failed: ' + statsResponse.status);
+
+  //     const [rawData, metadata, stats] = await Promise.all([
+  //       rawResponse.json(),
+  //       metadataResponse.json(),
+  //       statsResponse.json()
+  //     ]);
+
+  //     const transformedData = transformIndicatorData(rawData, metadata, stats);
+  //     const uniqueIndicators = transformedData.filter((indicator, index, self) =>
+  //       index === self.findIndex((t) => t.IID === indicator.IID)
+  //     );
+
+  //     setIndicators(uniqueIndicators);
+  //   } catch (err) {
+  //     console.error('Data fetch error:', err);
+  //     toast({ title: "Error", description: "Couldn't fetch indicators", variant: "destructive" });
+  //     setIndicators([]);
+  //   } finally {
+  //     console.timeEnd('Total fetch time');
+  //     setHealthDataLoading(false);
+  //   }
+  // };
+  
+  
+  const fetchIndicatorData = async (a: Area) => {    
     setHealthDataLoading(true);
-    console.time('Total fetch time');
-
     try {
-      const [rawResponse, metadataResponse, statsResponse] = await Promise.all([
-        fetch(`/api/proxy/latest-data?areaCode=${area.Code}&profileId=143`),
-        fetch(`/api/proxy/indicator-metadata?groupId=1938133185`),
-        fetch(`/api/proxy/indicator-statistics?profileId=143&areaCode=E92000001`)
-      ]);
+      const res = await fetch(`/api/health-data/${a.Code}`);
+      if (!res.ok) throw new Error('Failed to fetch data');
+      const json = await res.json();
+      const { area, indicators } = json.data; // ✅ This is the correct structure
 
-      if (!rawResponse.ok) throw new Error('Raw data failed: ' + rawResponse.status);
-      if (!metadataResponse.ok) throw new Error('Metadata failed: ' + metadataResponse.status);
-      if (!statsResponse.ok) throw new Error('Stats failed: ' + statsResponse.status);
+      console.log("DATAAA - 1:", area);
+      console.log("DATAAA - 2:", indicators);
 
-      const [rawData, metadata, stats] = await Promise.all([
-        rawResponse.json(),
-        metadataResponse.json(),
-        statsResponse.json()
-      ]);
-
-      const transformedData = transformIndicatorData(rawData, metadata, stats);
-      const uniqueIndicators = transformedData.filter((indicator, index, self) =>
-        index === self.findIndex((t) => t.IID === indicator.IID)
-      );
-
-      setIndicators(uniqueIndicators);
+      
+      //setSelectedArea(prev => ({ ...prev, ...area }));
+      setIndicators(indicators);
     } catch (err) {
-      console.error('Data fetch error:', err);
-      toast({ title: "Error", description: "Couldn't fetch indicators", variant: "destructive" });
+      toast({ title: "Error", description: "Couldn't fetch data", variant: "destructive" });
       setIndicators([]);
     } finally {
-      console.timeEnd('Total fetch time');
       setHealthDataLoading(false);
     }
   };
