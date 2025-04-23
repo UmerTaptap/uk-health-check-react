@@ -59,7 +59,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import Signup from "./pages/Signup";
 
 // Modern Header component with improved UX
 const Header = () => {

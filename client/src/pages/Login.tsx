@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
-// Theme variables
+// Reusing the same theme from signup page
 const theme = {
   primary: '#E05F20',  // Your brand color
   primaryLight: '#F08A5D',
@@ -16,7 +16,7 @@ const theme = {
   grayLight: '#f5f5f5'
 };
 
-const SignupContainer = styled.div`
+const LoginContainer = styled.div`
   display: flex;
   min-height: 100vh;
   background: ${theme.background};
@@ -32,6 +32,30 @@ const LeftPanel = styled(motion.div)`
   padding: 2rem;
   color: ${theme.white};
   background: linear-gradient(135deg, ${theme.primary} 0%, ${theme.primaryDark} 100%);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -80px;
+    left: -80px;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+  }
 `;
 
 const RightPanel = styled(motion.div)`
@@ -49,6 +73,8 @@ const FormContainer = styled(motion.div)`
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 450px;
+  position: relative;
+  z-index: 1;
 `;
 
 const Title = styled.h1`
@@ -118,6 +144,40 @@ const SubmitButton = styled(motion.button)`
   }
 `;
 
+const RememberForgot = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 1rem 0;
+`;
+
+const RememberMe = styled.div`
+  display: flex;
+  align-items: center;
+
+  input {
+    margin-right: 8px;
+    accent-color: ${theme.primary};
+  }
+
+  label {
+    color: ${theme.textLight};
+    font-size: 0.9rem;
+  }
+`;
+
+const ForgotPassword = styled(Link)`
+  color: ${theme.primary};
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: color 0.3s ease;
+
+  &:hover {
+    color: ${theme.primaryDark};
+    text-decoration: underline;
+  }
+`;
+
 const SocialLogin = styled.div`
   display: flex;
   justify-content: center;
@@ -158,7 +218,7 @@ const Divider = styled.div`
   }
 `;
 
-const LoginLink = styled.div`
+const SignupLink = styled.div`
   text-align: center;
   margin-top: 1.5rem;
   color: ${theme.textLight};
@@ -182,6 +242,8 @@ const WelcomeTitle = styled(motion.h1)`
   text-align: center;
   color: ${theme.white};
   font-weight: 700;
+  position: relative;
+  z-index: 2;
 `;
 
 const WelcomeSubtitle = styled(motion.p)`
@@ -190,36 +252,37 @@ const WelcomeSubtitle = styled(motion.p)`
   max-width: 80%;
   line-height: 1.6;
   color: rgba(255, 255, 255, 0.9);
+  position: relative;
+  z-index: 2;
 `;
 
-const Signup = () => {
+const Login = () => {
   const [formData, setFormData] = useState({
-    name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    rememberMe: false
   });
 
   const navigate = useNavigate();
 
-  const handleChange = (e: { target: { name: any; value: any; }; }) => {
-    const { name, value } = e.target;
+  const handleChange = (e: { target: { name: any; value: any; type: any; checked: any; }; }) => {
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
   const handleSubmit = (e: { preventDefault: () => void; }) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
+    console.log('Login form submitted:', formData);
     setTimeout(() => {
       navigate('/dashboard');
     }, 1500);
   };
 
   return (
-    <SignupContainer>
+    <LoginContainer>
       <LeftPanel
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
@@ -230,14 +293,14 @@ const Signup = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.6 }}
         >
-          Welcome to WA Chump & Sons
+          Welcome Back!
         </WelcomeTitle>
         <WelcomeSubtitle
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.6 }}
         >
-          Join our community today and experience the best services with your brand identity.
+          We're so excited to see you again! Log in to access your personalized dashboard.
         </WelcomeSubtitle>
       </LeftPanel>
 
@@ -251,21 +314,9 @@ const Signup = () => {
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.5 }}
         >
-          <Title>Create Your Account</Title>
+          <Title>Login to Your Account</Title>
           
           <form onSubmit={handleSubmit}>
-            <InputGroup>
-              <InputField 
-                type="text" 
-                name="name" 
-                placeholder=" "
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
-              <InputLabel>Full Name</InputLabel>
-            </InputGroup>
-
             <InputGroup>
               <InputField 
                 type="email" 
@@ -290,28 +341,30 @@ const Signup = () => {
               <InputLabel>Password</InputLabel>
             </InputGroup>
 
-            <InputGroup>
-              <InputField 
-                type="password" 
-                name="confirmPassword" 
-                placeholder=" "
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-              />
-              <InputLabel>Confirm Password</InputLabel>
-            </InputGroup>
+            <RememberForgot>
+              <RememberMe>
+                <input 
+                  type="checkbox" 
+                  id="rememberMe" 
+                  name="rememberMe"
+                  checked={formData.rememberMe}
+                  onChange={handleChange}
+                />
+                <label htmlFor="rememberMe">Remember me</label>
+              </RememberMe>
+              <ForgotPassword to="/forgot-password">Forgot password?</ForgotPassword>
+            </RememberForgot>
 
             <SubmitButton
               type="submit"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              Sign Up
+              Login
             </SubmitButton>
           </form>
 
-          <Divider>or sign up with</Divider>
+          <Divider>or login with</Divider>
 
           <SocialLogin>
             <SocialIcon whileHover={{ scale: 1.1, y: -3 }}>
@@ -331,13 +384,13 @@ const Signup = () => {
             </SocialIcon>
           </SocialLogin>
 
-          <LoginLink>
-            Already have an account? <a href="/login">Login</a>
-          </LoginLink>
+          <SignupLink>
+            Don't have an account? <Link to="/signup">Sign up</Link>
+          </SignupLink>
         </FormContainer>
       </RightPanel>
-    </SignupContainer>
+    </LoginContainer>
   );
 };
 
-export default Signup;
+export default Login;

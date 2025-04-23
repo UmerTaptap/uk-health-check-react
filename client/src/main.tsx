@@ -5,6 +5,9 @@ import App from "./App";
 import "./index.css";
 import { Redirect, Route, Switch } from "wouter";
 import Signup from "./pages/Signup";
+import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+
 
 createRoot(document.getElementById("root")!).render(
   // <App />
@@ -13,6 +16,12 @@ createRoot(document.getElementById("root")!).render(
       <Switch>
         <Route path="/" component={() => <Redirect to="/signup" />} />
         <Route path="/signup" component={Signup} />
+
+        <Route path="/login" component={Login} />
+
+        <Route path="/forgot-password" component={ForgotPassword} />
+
+
       </Switch>
       {/* <App /> */}
     </BrowserRouter>
