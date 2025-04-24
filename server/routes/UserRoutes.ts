@@ -14,7 +14,7 @@ export class UserRoutes extends BaseRoute<UserController> {
       this.controller.getAllUsers(req, res)
     );
     
-    this.router.post('/users', (req, res) => 
+    this.router.post('/users/signup', (req, res) => 
       this.controller.createUser(req, res)
     );
 
