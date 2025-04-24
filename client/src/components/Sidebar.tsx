@@ -51,7 +51,7 @@ const Sidebar = () => {
               Main
             </div>
             <nav className="space-y-1 mb-6">
-              <Link href="/" className={getLinkClass("/")}>
+              <Link href="/dashboard" className={getLinkClass("/dashboard")}>
                 <Home className="h-5 w-5 mr-3 text-gray-500" />
                 Dashboard
               </Link>

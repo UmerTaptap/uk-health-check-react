@@ -10,12 +10,16 @@ export class UserRoutes extends BaseRoute<UserController> {
 
   protected registerRoutes(): void {
     // Properly initialized router available here
-    this.router.get('/users', (req, res) => 
+    this.router.get('/users/all', (req, res) => 
       this.controller.getAllUsers(req, res)
     );
     
     this.router.post('/users', (req, res) => 
       this.controller.createUser(req, res)
+    );
+
+    this.router.post('/users/delete', (req, res) =>
+      this.controller.deleteUsers(req, res)
     );
   }
 }

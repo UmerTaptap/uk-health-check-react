@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Route, Switch, useLocation } from "wouter";
+import { Route, Switch, useLocation, Redirect } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { queryClient } from "./lib/queryClient";
 import { AnimatePresence } from "framer-motion";
@@ -19,9 +19,9 @@ import WorkOrderDetail from "./pages/WorkOrderDetail";
 import Sensors from "./pages/Sensors";
 import NotFound from "@/pages/not-found";
 import Footer from "./components/Footer";
-import { 
-  Bell, 
-  Search, 
+import {
+  Bell,
+  Search,
   Menu,
   X,
   Calendar as CalendarIcon,
@@ -59,6 +59,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import Signup from "./pages/Signup";
 
 // Modern Header component with improved UX
 const Header = () => {
@@ -69,7 +70,7 @@ const Header = () => {
   const [date, setDate] = useState<Date>();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  
+
   // Alerts/notifications data
   const notifications = [
     {
@@ -105,17 +106,17 @@ const Header = () => {
       priority: "low"
     }
   ];
-  
+
   // Close notification panel when clicking outside
   const notificationRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
         setNotificationsOpen(false);
       }
     }
-    
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
@@ -128,8 +129,8 @@ const Header = () => {
         <div className="flex h-16 items-center justify-between">
           {/* Left section with mobile menu button */}
           <div className="flex items-center md:hidden">
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
@@ -140,14 +141,14 @@ const Header = () => {
               )}
             </button>
           </div>
-          
+
           {/* Middle section with page title and breadcrumb */}
           <div className="flex flex-1 items-center justify-center md:justify-start">
             <h1 className="text-xl font-semibold text-gray-900">
               Housing Compliance Dashboard
             </h1>
           </div>
-          
+
           {/* Right section with action buttons */}
           <div className="flex items-center space-x-4">
             {/* Search toggle */}
@@ -160,15 +161,15 @@ const Header = () => {
                     className="w-64 rounded-lg border border-gray-300 py-2 px-4 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     autoFocus
                   />
-                  <button 
-                    className="ml-2 text-gray-400 hover:text-gray-600" 
+                  <button
+                    className="ml-2 text-gray-400 hover:text-gray-600"
                     onClick={() => setSearchOpen(false)}
                   >
                     <X className="h-5 w-5" />
                   </button>
                 </div>
               ) : (
-                <button 
+                <button
                   className="flex items-center rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                   onClick={() => setSearchOpen(true)}
                 >
@@ -176,7 +177,7 @@ const Header = () => {
                 </button>
               )}
             </div>
-            
+
             {/* Date picker */}
             <TooltipProvider>
               <Tooltip>
@@ -219,13 +220,13 @@ const Header = () => {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            
+
             {/* Notifications */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="relative" ref={notificationRef}>
-                    <div 
+                    <div
                       className="relative rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 cursor-pointer"
                       onClick={() => setNotificationsOpen(!notificationsOpen)}
                     >
@@ -234,7 +235,7 @@ const Header = () => {
                       </span>
                       <Bell className="h-5 w-5" />
                     </div>
-                    
+
                     {/* Notifications dropdown panel */}
                     {notificationsOpen && (
                       <div className="absolute right-0 mt-2 w-80 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
@@ -256,10 +257,9 @@ const Header = () => {
                               {notifications.map((notification) => (
                                 <Link to={`/alerts/${notification.id}`} key={notification.id}>
                                   <div className="flex px-4 py-3 hover:bg-gray-50 cursor-pointer">
-                                    <div className={`flex-shrink-0 mr-3 mt-1 h-2 w-2 rounded-full ${
-                                      notification.priority === 'high' ? 'bg-red-500' : 
+                                    <div className={`flex-shrink-0 mr-3 mt-1 h-2 w-2 rounded-full ${notification.priority === 'high' ? 'bg-red-500' :
                                       notification.priority === 'medium' ? 'bg-amber-500' : 'bg-blue-500'
-                                    }`} />
+                                      }`} />
                                     <div className="flex-1 space-y-1">
                                       <p className="text-sm font-medium text-gray-900">{notification.title}</p>
                                       <p className="text-sm text-gray-500">{notification.description}</p>
@@ -277,7 +277,7 @@ const Header = () => {
                           )}
                         </div>
                         <div className="border-t border-gray-100 p-3">
-                          <div 
+                          <div
                             className="w-full flex items-center justify-center rounded-md bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 cursor-pointer"
                             onClick={() => {
                               // Mark all notifications as read
@@ -298,7 +298,7 @@ const Header = () => {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            
+
             {/* Action buttons for exports and reports */}
             <div className="hidden sm:flex items-center space-x-2">
               <TooltipProvider>
@@ -314,7 +314,7 @@ const Header = () => {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              
+
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -331,7 +331,7 @@ const Header = () => {
                 </Tooltip>
               </TooltipProvider>
             </div>
-            
+
             {/* User profile dropdown */}
             <div className="relative ml-3">
               <DropdownMenu>
@@ -386,7 +386,7 @@ const Header = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Mobile menu, show/hide based on menu state */}
       {mobileMenuOpen && (
         <div className="md:hidden">
@@ -412,16 +412,16 @@ const Header = () => {
             <Link to="/settings" onClick={() => setMobileMenuOpen(false)}>
               <span className="block rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900">Settings</span>
             </Link>
-            
+
             {/* Divider for user options in mobile menu */}
             <div className="border-t border-gray-200 my-2"></div>
-            
+
             {/* User profile section in mobile menu */}
             <div className="px-3 py-2">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">User Options</p>
             </div>
-            
-            <div 
+
+            <div
               className="block rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 cursor-pointer"
               onClick={() => {
                 setMobileMenuOpen(false);
@@ -436,8 +436,8 @@ const Header = () => {
                 <span>Profile</span>
               </div>
             </div>
-            
-            <div 
+
+            <div
               className="block rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 cursor-pointer"
               onClick={() => {
                 setMobileMenuOpen(false);
@@ -452,8 +452,8 @@ const Header = () => {
                 <span>Help & Support</span>
               </div>
             </div>
-            
-            <div 
+
+            <div
               className="block rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 cursor-pointer"
               onClick={() => {
                 setMobileMenuOpen(false);
@@ -488,7 +488,8 @@ function App() {
             <AnimatePresence mode="wait">
               <PageTransition routeKey={location}>
                 <Switch>
-                  <Route path="/" component={Dashboard} />
+                  <Route path="/" component={() => <Redirect to="/dashboard" />} />
+                  <Route path="/dashboard" component={Dashboard} />
                   <Route path="/properties" component={Properties} />
                   <Route path="/properties/:id" component={PropertyDetail} />
                   <Route path="/property-groups" component={PropertyGroups} />

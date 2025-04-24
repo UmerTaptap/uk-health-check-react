@@ -76,7 +76,6 @@ app.use('/api', healthDataRoute.getRouter());
 
 
 
-
 // api/proxy/index.ts
 
 app.get('/api/proxy/area-search', async (req, res) => {
