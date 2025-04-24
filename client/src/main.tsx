@@ -21,6 +21,8 @@ createRoot(document.getElementById("root")!).render(
 
         <Route path="/forgot-password" component={ForgotPassword} />
 
+        <Route path="/dashboard" component={App} />
+
 
       </Switch>
       {/* <App /> */}

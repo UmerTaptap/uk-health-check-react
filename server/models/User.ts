@@ -1,6 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
 interface User  {
+    userId: number;
     name: string;
     email: string;
     password: string;
@@ -9,6 +10,11 @@ interface User  {
 }
 
 const UserSchema: Schema<User> = new Schema({
+    
+    userId: {
+        type: Number,
+        required: true,
+    },
     name: {
         type: String,
         required: true,
