@@ -60,6 +60,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 
+import PrivateRoute from "./routes/PrivateRoute";
+import { logout } from "./auth";
+
 // Modern Header component with improved UX
 const Header = () => {
   const [location, navigate] = useLocation();
@@ -375,6 +378,9 @@ const Header = () => {
                       title: "Signed out",
                       description: "You have been successfully signed out",
                     });
+                    
+                    logout();
+
                   }}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign out</span>
@@ -487,9 +493,12 @@ function App() {
             <AnimatePresence mode="wait">
               <PageTransition routeKey={location}>
                 <Switch>
-                  <Route path="/" component={() => <Redirect to="/dashboard" />} />
-                  <Route path="/dashboard" component={Dashboard} />
-                  <Route path="/properties" component={Properties} />
+                  <PrivateRoute path="/dashboard" component={Dashboard} />
+                  <PrivateRoute path="/" component={() => <Redirect to="/dashboard" />} />
+                  <PrivateRoute path="/properties" component={Properties} />
+                  {/* <Route path="/" component={() => <Redirect to="/dashboard" />} />
+                  <Route path="/dashboard" component={Dashboard} /> */}
+                  {/* <Route path="/properties" component={Properties} /> */}
                   <Route path="/properties/:id" component={PropertyDetail} />
                   <Route path="/property-groups" component={PropertyGroups} />
                   <Route path="/property-groups/:id" component={PropertyGroupDetail} />

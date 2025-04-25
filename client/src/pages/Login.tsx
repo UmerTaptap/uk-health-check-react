@@ -290,15 +290,27 @@ const Login = () => {
       }
 
       const result = await response.json();
+
+      console.log('Login response:', result);
+
+
       if (result.message === 'User not exists') {
-        alert('User not exists!');
-      } else if (result.message === 'Login Successful') {
-        
+        alert(result.message);
+      }
+      else if (result.message === 'Invalid credentials') {
+        alert(result.message);
+      }
+      else if (result.message === 'Login Successful') {
+
         const token = result.data.token;
+        localStorage.setItem('token', token); // Store the token in local storage
 
         console.log('Login successful:', result.data.token);
-        alert('User login successfully!');
-        navigate('/dashboard'); // Redirect to dashboard after successful signup
+
+        if (token) {
+          alert(result.message);
+          navigate('/dashboard'); // Redirect to dashboard after successful signup
+        }
       }
 
     } catch (error) {

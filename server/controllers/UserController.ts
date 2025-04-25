@@ -88,7 +88,7 @@ export class UserController extends BaseController {
       if (user) {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-          this.errorResponse(res, 400, 'Invalid credentials');
+          this.jsonResponse(res, 200, 'Invalid credentials');
           return;
         }
 
