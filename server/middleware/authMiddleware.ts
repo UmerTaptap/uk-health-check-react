@@ -30,4 +30,22 @@ const authMiddleware = (
     }
 };
 
+export const authorizeRoles = (...roles: string[]) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      const user = (req as any).user;
+  
+      if (!user) {
+        return res.status(401).json({ message: 'Not authorized' });
+      }
+  
+      if (!roles.includes(user.role)) {
+        return res.status(403).json({
+          message: `Access denied. Role '${user.role}' is not allowed to access this route.`,
+        });
+      }
+  
+      next();
+    };
+  };
+
 export default authMiddleware;

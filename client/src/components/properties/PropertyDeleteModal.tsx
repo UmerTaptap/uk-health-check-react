@@ -3,7 +3,7 @@ import { X, Trash2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import { Property } from '@/lib/types';
+import { Property, PropertyData } from '@/lib/types';
 
 // Dialog components
 import {
@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 interface PropertyDeleteModalProps {
   isOpen: boolean;
   onClose: () => void;
-  property: Property | null;
+  property: PropertyData | null;
 }
 
 const PropertyDeleteModal = ({ isOpen, onClose, property }: PropertyDeleteModalProps) => {
@@ -35,7 +35,7 @@ const PropertyDeleteModal = ({ isOpen, onClose, property }: PropertyDeleteModalP
     try {
       setIsDeleting(true);
       
-      const response = await apiRequest(`/api/properties/${property.id}`, {
+      const response = await apiRequest(`/api/properties/${property._id}`, {
         method: 'DELETE'
       });
       
@@ -99,8 +99,8 @@ const PropertyDeleteModal = ({ isOpen, onClose, property }: PropertyDeleteModalP
             <h3 className="font-semibold text-gray-900">{property.name}</h3>
             <p className="text-sm text-gray-600">{property.address}</p>
             <div className="mt-1 text-xs text-gray-500">
-              <p>Risk Level: <span className="font-medium">{property.riskLevel}</span></p>
-              <p>Status: <span className="font-medium">{property.status}</span></p>
+              <p>Risk Level: <span className="font-medium">{property.compliance.riskLevel}</span></p>
+              <p>Status: <span className="font-medium">{property.compliance.currentStatus}</span></p>
             </div>
           </div>
         </div>

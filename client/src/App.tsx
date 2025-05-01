@@ -61,7 +61,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 import PrivateRoute from "./routes/PrivateRoute";
-import { logout } from "./auth";
+import { logout, getUserFromToken } from "./auth";
 
 // Modern Header component with improved UX
 const Header = () => {
@@ -72,6 +72,40 @@ const Header = () => {
   const [date, setDate] = useState<Date>();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [username, setUserName] = useState("Guest");
+  const [userEmail, setUserEmail] = useState("guest@gmail.com");;
+  const user = getUserFromToken();
+  console.log('UserId: ', user?.userId);
+  const userId = user?.userId || 0;
+
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/api/users/' + userId, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        console.log('User response:', result.data);
+        setUserName(result.data.name);
+        setUserEmail(result.data.email);
+
+      } catch (error) {
+        console.error('Error during get user:', error);
+      }
+    };
+
+    getUser();
+  }, []);
 
   // Alerts/notifications data
   const notifications = [
@@ -343,15 +377,15 @@ const Header = () => {
                       <User className="h-5 w-5" />
                     </div>
                     <div className="hidden md:flex items-center text-sm font-medium text-gray-700">
-                      <span>John Doe</span>
+                      <span>{username}</span>
                       <ChevronDown className="ml-1 h-4 w-4" />
                     </div>
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-4 py-3">
-                    <p className="text-sm font-medium text-gray-900">John Doe</p>
-                    <p className="text-xs text-gray-500 truncate">john.doe@housingassociation.co.uk</p>
+                    <p className="text-sm font-medium text-gray-900">{username}</p>
+                    <p className="text-xs text-gray-500 truncate">{userEmail}</p>
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => {
@@ -378,7 +412,7 @@ const Header = () => {
                       title: "Signed out",
                       description: "You have been successfully signed out",
                     });
-                    
+
                     logout();
 
                   }}>

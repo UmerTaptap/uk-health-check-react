@@ -1,20 +1,29 @@
 import mongoose, { Schema } from "mongoose";
 
-interface User  {
-    userId: number;
+export enum UserRole {
+    Admin = "SUPER_ADMIN",
+    Owner = "OWNER",
+    Manager = "MANAGER",
+}
+
+
+interface User {
+    // userId: number;
     name: string;
     email: string;
     password: string;
+    role: UserRole;
+    createdBy?: mongoose.Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
 }
 
 const UserSchema: Schema<User> = new Schema({
-    
-    userId: {
-        type: Number,
-        required: true,
-    },
+
+    // userId: {
+    //     type: Number,
+    //     required: true,
+    // },
     name: {
         type: String,
         required: true,
@@ -27,6 +36,15 @@ const UserSchema: Schema<User> = new Schema({
     password: {
         type: String,
         required: true,
+    },
+    role: {
+        type: String,
+        enum: UserRole,
+        required: true,
+    },
+    createdBy: {
+        type: mongoose.Types.ObjectId,
+        ref: 'User',
     },
     createdAt: {
         type: Date,

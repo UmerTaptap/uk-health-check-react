@@ -24,6 +24,26 @@ export interface Property {
   groupName?: string;
 }
 
+export interface PropertyData {
+  _id: string,
+  name: string;
+  address: string;
+  description: string;
+  propertyDetails: {
+    type: string;
+    units: number;
+    build: number;
+    lastRenovation: number;
+    lastInspection: Date;
+    propertyManager: string;
+  };
+  compliance: {
+    currentStatus: string;
+    riskLevel: RiskLevel;
+    riskReason: string;
+  };
+}
+
 // Alert Types
 export type AlertSeverity = 'high' | 'medium' | 'low';
 export type AlertType = 'moisture' | 'mould' | 'air-quality' | 'tenant-report';

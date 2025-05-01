@@ -15,7 +15,7 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<PropertyStatus>('compliant');
+  const [status, setStatus] = useState<string>('Compliant');
   const [riskLevel, setRiskLevel] = useState<RiskLevel>('none');
   const [riskReason, setRiskReason] = useState('');
   const [propertyType, setPropertyType] = useState('Residential');
@@ -25,17 +25,17 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
   const [propertyManager, setPropertyManager] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   // Reset form when modal opens
   React.useEffect(() => {
     if (isOpen) {
       setName('');
       setAddress('');
       setDescription('');
-      setStatus('compliant');
+      setStatus('Compliant');
       setRiskLevel('none');
       setRiskReason('');
       setPropertyType('Residential');
@@ -46,7 +46,7 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
       setError(null);
     }
   }, [isOpen]);
-  
+
   // Add property mutation
   const addPropertyMutation = useMutation({
     mutationFn: async (propertyData: any) => {
@@ -58,12 +58,12 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
     onSuccess: () => {
       // Invalidate queries to refetch properties
       queryClient.invalidateQueries({ queryKey: ['/api/properties'] });
-      
+
       toast({
         title: 'Property added successfully',
         description: 'The new property has been created.',
       });
-      
+
       // Close modal after successful submission
       onClose();
     },
@@ -80,51 +80,127 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
       setIsSubmitting(false);
     }
   });
-  
+
   // Form validation
   const validateForm = () => {
     if (!name.trim()) {
       setError('Property name is required');
       return false;
     }
-    
+
     if (!address.trim()) {
       setError('Property address is required');
       return false;
     }
-    
+
     return true;
   };
-  
+
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setIsSubmitting(true);
     setError(null);
-    
+
     // Prepare property data
     const propertyData = {
       name,
       address,
       description: description.trim() || null,
-      status,
-      riskLevel,
-      riskReason: riskReason.trim() || null,
-      propertyType: propertyType.trim() || null,
-      units: units ? parseInt(units, 10) : null,
-      yearBuilt: yearBuilt ? parseInt(yearBuilt, 10) : null,
-      lastRenovation: lastRenovation.trim() || null,
-      propertyManager: propertyManager.trim() || null
+      propertyDetails: {
+        type: propertyType.trim() || null,
+        units: units ? parseInt(units, 10) : null,
+        build: yearBuilt ? parseInt(yearBuilt, 10) : null,
+        lastRenovation: lastRenovation.trim() || null,
+        propertyManager: propertyManager.trim() || null
+      },
+      compliance: {
+        currentStatus: status,
+        riskLevel,
+        riskReason: riskReason.trim() || null
+      }
     };
-    
-    addPropertyMutation.mutate(propertyData);
+
+    // status,
+    // riskLevel,
+    // riskReason: riskReason.trim() || null,
+    // propertyType: propertyType.trim() || null,
+    // units: units ? parseInt(units, 10) : null,
+    // yearBuilt: yearBuilt ? parseInt(yearBuilt, 10) : null,
+    // lastRenovation: lastRenovation.trim() || null,
+    // propertyManager: propertyManager.trim() || null
+    // };
+
+
+    AddProperty(propertyData);
+
+    console.log(propertyData);
+
+    // addPropertyMutation.mutate(propertyData);
   };
-  
+
+  const AddProperty = async (propertyData: any) => {
+    // {
+    //   "name": "Shadman Street Appartments",
+    //     "address": "Street 45",
+    //       "description": "4 Bed DD",
+    //         "propertyDetails": {
+    //     "type": "Residential",
+    //       "units": 12,
+    //         "build": 2020,
+    //           "lastRenovation": 2022
+    //   },
+    //   "compliance": {
+    //     "currentStatus": "Compliant",
+    //       "riskLevel": "none"
+    //   }
+    // }
+
+    const res = await fetch('http://localhost:3000/api/properties/add', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify(propertyData)
+    });
+
+    if (!res.ok) {
+      console.log('Error fetching all properties:', res.status);
+      return;
+    }
+
+    const result = await res.json();
+    console.log('Property added:', result);
+
+    if (result.success) {
+
+      setIsSubmitting(false);
+
+      toast({
+        title: 'Property added successfully',
+        description: 'The new property has been created.',
+      });
+
+      // Close modal after successful submission
+      onClose();
+    }
+    else {
+      setError('Failed to add property. Please check your information and try again.');
+      toast({
+        title: 'Error',
+        description: 'There was an error adding the property. Please try again.',
+        variant: 'destructive'
+      });
+      setIsSubmitting(false);
+    }
+  };
+
   // Warning message for risk levels
   const getRiskMessage = () => {
     if (riskLevel === 'high') {
@@ -134,15 +210,15 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
     } else if (riskLevel === 'low') {
       return 'Low risk properties should be monitored and addressed during routine maintenance.';
     }
-    
+
     return '';
   };
-  
+
   if (!isOpen) return null;
-  
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto p-4">
-      <motion.div 
+      <motion.div
         className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -151,15 +227,15 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
       >
         <div className="sticky top-0 bg-white z-10 border-b px-6 py-4 flex justify-between items-center">
           <h2 className="text-xl font-semibold">Add New Property</h2>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="p-1 rounded-full hover:bg-gray-100"
             disabled={isSubmitting}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="px-6 py-4">
           {/* Basic Information */}
           <div className="mb-6">
@@ -179,7 +255,7 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
                   disabled={isSubmitting}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Address*
@@ -194,7 +270,7 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
                   disabled={isSubmitting}
                 />
               </div>
-              
+
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Description
@@ -210,7 +286,7 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
               </div>
             </div>
           </div>
-          
+
           {/* Property Details */}
           <div className="mb-6">
             <h3 className="text-lg font-medium mb-4">Property Details</h3>
@@ -234,7 +310,7 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
                   <option value="Detached">Detached</option>
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Number of Units
@@ -249,7 +325,7 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
                   disabled={isSubmitting}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Year Built
@@ -265,7 +341,7 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
                   disabled={isSubmitting}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Last Renovation
@@ -279,7 +355,7 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
                   disabled={isSubmitting}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Property Manager
@@ -295,7 +371,7 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
               </div>
             </div>
           </div>
-          
+
           {/* Compliance Status */}
           <div className="mb-6">
             <h3 className="text-lg font-medium mb-4">Compliance Status</h3>
@@ -311,12 +387,12 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
                   required
                   disabled={isSubmitting}
                 >
-                  <option value="compliant">Compliant</option>
+                  <option value="Compliant">Compliant</option>
                   <option value="at-risk">At Risk</option>
                   <option value="non-compliant">Non-Compliant</option>
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Risk Level
@@ -333,7 +409,7 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
                   <option value="high">High</option>
                 </select>
               </div>
-              
+
               {riskLevel !== 'none' && (
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -343,11 +419,10 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
                   <textarea
                     value={riskReason}
                     onChange={(e) => setRiskReason(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      riskLevel === 'high' && !riskReason.trim() 
-                        ? 'border-red-500' 
-                        : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md ${riskLevel === 'high' && !riskReason.trim()
+                      ? 'border-red-500'
+                      : 'border-gray-300'
+                      }`}
                     rows={2}
                     placeholder="Explain the reason for the risk assessment"
                     required={riskLevel === 'high'}
@@ -355,18 +430,18 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
                   />
                 </div>
               )}
-              
+
               {riskLevel !== 'none' && (
-                <div className="md:col-span-2 p-3 rounded-md" style={{ 
-                  backgroundColor: riskLevel === 'high' ? 'rgba(239, 68, 68, 0.1)' : 
-                                  riskLevel === 'medium' ? 'rgba(245, 158, 11, 0.1)' : 
-                                  'rgba(59, 130, 246, 0.1)'
+                <div className="md:col-span-2 p-3 rounded-md" style={{
+                  backgroundColor: riskLevel === 'high' ? 'rgba(239, 68, 68, 0.1)' :
+                    riskLevel === 'medium' ? 'rgba(245, 158, 11, 0.1)' :
+                      'rgba(59, 130, 246, 0.1)'
                 }}>
                   <div className="flex items-start">
                     <AlertCircle className="w-5 h-5 mr-2 mt-0.5" style={{
-                      color: riskLevel === 'high' ? 'rgb(239, 68, 68)' : 
-                            riskLevel === 'medium' ? 'rgb(245, 158, 11)' : 
-                            'rgb(59, 130, 246)'
+                      color: riskLevel === 'high' ? 'rgb(239, 68, 68)' :
+                        riskLevel === 'medium' ? 'rgb(245, 158, 11)' :
+                          'rgb(59, 130, 246)'
                     }} />
                     <span className="text-sm">{getRiskMessage()}</span>
                   </div>
@@ -374,7 +449,7 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
               )}
             </div>
           </div>
-          
+
           {/* Error message */}
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 flex items-center">
@@ -382,7 +457,7 @@ const PropertyAddModal: React.FC<PropertyAddModalProps> = ({ isOpen, onClose }) 
               <span>{error}</span>
             </div>
           )}
-          
+
           {/* Form actions */}
           <div className="flex justify-end space-x-3 border-t pt-4 mt-6">
             <button

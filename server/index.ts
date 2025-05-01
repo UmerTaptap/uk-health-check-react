@@ -9,6 +9,8 @@ import { HealthDataController } from "./controllers/HealthDataController";
 import { HealthDataRoute } from "./routes/HealthDataRoute";
 import cors from 'cors';
 import 'dotenv/config';
+import { PropertyController } from "./controllers/PropertyController";
+import { PropertyRoutes } from "./routes/PropertyRoutes";
 const app = express();
 const MONGO_URI = process.env.MONGO_URI || 'your-fallback-uri';
 app.use(cors());
@@ -58,16 +60,24 @@ app.use((req, res, next) => {
 
 
 
-
+// UserController and UserRoutes
 const userController = new UserController();
 const userRoutes = new UserRoutes(userController);
 app.use('/api', userRoutes.getRouter());
 
+// PropertyController and PropertyRoutes
+const propertyController = new PropertyController();
+const propertyRoutes = new PropertyRoutes(propertyController);
+app.use('/api', propertyRoutes.getRouter());
 
+// HealthDataController and HealthDataRoute
 const healthDataController = new HealthDataController();
 const healthDataRoute = new HealthDataRoute(healthDataController);
 app.use('/api', healthDataRoute.getRouter());
 
+// Owner Router
+import ownerRouter from "./routes/OwnerRoutes";
+app.use('/api', ownerRouter);
 
 
 
