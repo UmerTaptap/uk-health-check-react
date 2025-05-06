@@ -10,7 +10,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ component: Component, path 
     <Route
         path={path}
         component={(params) =>
-            isAuthenticated() ? <Component {...(params as any)} /> : <Redirect to="/signup" />
+            isAuthenticated() ? <Component {...(params as any)} /> : <Redirect to="/login" />
         }
     />
 );

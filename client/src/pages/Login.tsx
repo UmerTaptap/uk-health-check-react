@@ -302,10 +302,10 @@ const Login = () => {
       }
       else if (result.message === 'Login Successful') {
 
-        const token = result.data.token;
+        const token = result.token;
         localStorage.setItem('token', token); // Store the token in local storage
 
-        console.log('Login successful:', result.data.token);
+        console.log('Login successful:', result.token);
 
         if (token) {
           alert(result.message);

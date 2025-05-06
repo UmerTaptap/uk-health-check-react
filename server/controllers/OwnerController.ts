@@ -60,6 +60,27 @@ export const createGroup = async (req: Request, res: Response) => {
     }
 };
 
+export const deleteGroup = async (req: Request, res: Response) => {
+    const { groupId } = req.body;
+    const currentUser = (req as any).user;
+
+    if (!groupId) return res.status(400).json({ message: 'Groupd id is required' });
+
+    const group = await Group.findOne({ _id: groupId, owner: currentUser._id });
+    if (!group) {
+        return res.status(400).json({ message: 'Group not found or not owned by you' });
+    }
+
+    if (currentUser.role === UserRole.Owner) {
+        const result = await Group.deleteOne({ _id: groupId, owner: currentUser._id })
+        if (result.deletedCount === 0) {
+            res.status(404).json({ message: 'Group not found to delete or already deleted' });
+        }
+
+        res.status(200).json({ message: 'Group deleted successfully', currentUser });
+    }
+};
+
 export const assignManagerToGroup = async (req: Request, res: Response) => {
     const { groupId, managerId } = req.body;
     const currentUser = (req as any).user;
@@ -88,27 +109,21 @@ export const assignManagerToGroup = async (req: Request, res: Response) => {
     }
 };
 
+
 export const listGroups = async (req: Request, res: Response) => {
     const user = (req as any).user;
     let groups: any[] = [];
     try {
 
-        if (user.role === UserRole.Owner) {
-            groups = await Group.find({ owner: user._id }).populate('owner', 'email name role').lean();
+        if (user.role === UserRole.Manager) {
+            groups = await Group.find({ manager: user._id }).populate('manager', 'email name role').populate('properties');
         }
-        else
-            if (user.role === UserRole.Manager) {
-                groups = await Group.find({ manager: user._id }).populate('manager', 'email name role').lean();
-            }
 
-        const groupsWithProperties = await Promise.all(
-            groups.map(async (group) => {
-                const properties = await Property.find({ group: group._id });
-                return { ...group, properties };
-            })
-        );
+        if (user.role === UserRole.Owner) {
+            groups = await Group.find({ owner: user._id }).populate('owner', 'email name role').populate('properties');
+        }
 
-        res.json({ groups: groupsWithProperties });
+        res.json({ groups });
     }
     catch (err: any) {
         console.error(err);

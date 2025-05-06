@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { BaseController } from "./BaseController";
 import Property from "../models/Property";
 import User, { UserRole } from "../models/User";
+import Group from "../models/Group";
 
 export class PropertyController extends BaseController {
     public async getAllProperties(req: Request, res: Response): Promise<any> {
@@ -110,21 +111,93 @@ export class PropertyController extends BaseController {
         }
     }
 
-    public async assginPropertyToGroup(req: Request, res: Response): Promise<any> {
-        const { groupId, propertyId } = req.body;
+    public async assginPropertiesToGroup(req: Request, res: Response): Promise<any> {
+        const { groupId, propertyIds } = req.body;
         const currentUser = (req as any).user;
 
-        if (currentUser.role === UserRole.Owner) {
-            const property = await Property.find({owner: currentUser._id});
-            res.status(200).json({mssage: 'This is owner', property});
-        }
+        try {
+            if (!groupId || !Array.isArray(propertyIds)) {
+                return res.status(400).json({ message: 'groupId and propertyIds[] are required' });
+            }
 
-        else
-        if (currentUser.role === UserRole.Manager) {
-            const property = await Property.find({manager: currentUser._id});
-            res.status(200).json({mssage: 'This is manager', property});
+
+            if (currentUser.role === UserRole.Owner) {
+                const group = await Group.findOne({ _id: groupId, owner: currentUser._id });
+                if (!group) return res.status(400).json({ message: 'Group not found or not owned by you!' });
+
+                await Property.updateMany({
+                    _id: { $in: propertyIds }
+                },
+                    {
+                        $set: { group: groupId }
+                    }
+                );
+
+                // group.properties = propertyIds.length === 1 ? [propertyIds[0]] : [null as any];
+                group.properties = propertyIds as any;
+                await group.save();
+                res.status(200).json({ message: 'Properties assigned to group', group });
+            }
+
+            if (currentUser.role === UserRole.Manager) {
+                const group = await Group.findOne({ _id: groupId, manager: currentUser._id });
+                if (!group) return res.status(400).json({ message: 'Group not found or not owned by you!' });
+
+                await Property.updateMany({
+                    _id: { $in: propertyIds }
+                },
+                    {
+                        $set: { group: groupId }
+                    }
+                );
+
+                // group.properties = propertyIds.length === 1 ? [propertyIds[0]] : [null as any];
+                group.properties = propertyIds as any;
+                await group.save();
+                res.status(200).json({ message: 'Properties assigned to group', group });
+            }
+        }
+        catch (err: any) {
+            res.status(500).json({ message: err.message });
         }
     }
+
+    public async getGroupProperties(req: Request, res: Response): Promise<any> {
+        const { groupId } = req.params;
+        const currentUser = (req as any).user;
+
+        try {
+
+            if (currentUser.role === UserRole.Owner) {
+                const group = await Group.findOne({ _id: groupId, owner: currentUser._id }).populate({
+                    path: 'properties',
+                    populate: { path: 'manager', select: 'email role' },
+                });
+
+                if (!group) return res.status(404).json({ message: 'Group not found' });
+
+                res.status(200).json({ properties: group.properties });
+            }
+
+            if (currentUser.role === UserRole.Manager) {
+
+                const group = await Group.findOne({ _id: groupId, manager: currentUser._id }).populate({
+                    path: 'properties',
+                    populate: { path: 'owner', select: 'email role' },
+                });
+
+                if (!group) return res.status(404).json({ message: 'Group not found' });
+                
+                res.status(200).json({ properties: group.properties });
+            }
+
+        } catch (err: any) {
+            console.error(err);
+            res.status(500).json({ message: err.message });
+        }
+    };
+
 }
+
 
 

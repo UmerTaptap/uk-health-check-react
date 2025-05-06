@@ -139,7 +139,7 @@ export class UserController extends BaseController {
         throw new Error('SECRET_KEY is not defined in environment variables');
       }
 
-      const token = jwt.sign({ _id: user._id, role: user.role }, process.env.SECRET_KEY, { expiresIn: '2h' });
+      const token = jwt.sign({ _id: user._id, role: user.role }, process.env.SECRET_KEY, { expiresIn: '24h' });
       res.status(200).json({ message: 'Login Successful', _id: user._id, email: user.email, role: user.role, token });
 
       // if (user) {

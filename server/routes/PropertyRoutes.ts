@@ -26,8 +26,12 @@ export class PropertyRoutes extends BaseRoute<PropertyController> {
             this.controller.addProperty(req, res)
         );
 
-        this.router.post('/assign-property-group/', authMiddleware, authorizeRoles('OWNER', 'MANAGER'), (req, res) =>
-            this.controller.assginPropertyToGroup(req, res)
+        this.router.put('/assign-group-properties/', authMiddleware, authorizeRoles('OWNER', 'MANAGER'), (req, res) =>
+            this.controller.assginPropertiesToGroup(req, res)
+        );
+
+        this.router.get('/group-properties/:groupId', authMiddleware, authorizeRoles('OWNER', 'MANAGER'), (req, res) =>
+            this.controller.getGroupProperties(req, res)
         );
 
         // this.router.post('/properties/create', (req, res) =>

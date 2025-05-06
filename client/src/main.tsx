@@ -20,7 +20,7 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/signup" component={Signup} />
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} /> */}
-        <PublicRoute path="/signup" component={Signup} />
+        {/* <PublicRoute path="/signup" component={Signup} /> */}
         <PublicRoute path="/login" component={Login} />
         <App />
       </Switch>

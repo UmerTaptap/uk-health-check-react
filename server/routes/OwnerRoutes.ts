@@ -1,11 +1,13 @@
 import { Router } from 'express';
-import { createManager, createGroup, assignManagerToGroup, listGroups, listManagers } from '../controllers/OwnerController';
+import { createManager, createGroup, assignManagerToGroup, listGroups, listManagers, deleteGroup } from '../controllers/OwnerController';
 import authMiddleware, { authorizeRoles } from '../middleware/authMiddleware';
 
 const router = Router();
 
 router.post('/create-manager', authMiddleware, authorizeRoles('OWNER'), createManager);
 router.post('/create-group', authMiddleware, authorizeRoles('OWNER'), createGroup);
+router.post('/delete-group', authMiddleware, authorizeRoles('OWNER'), deleteGroup);
+
 router.post('/assign-group-manager', authMiddleware, authorizeRoles('OWNER'), assignManagerToGroup);
 
 router.get('/groups', authMiddleware, authorizeRoles('OWNER', 'MANAGER'), listGroups);
